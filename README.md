@@ -104,6 +104,13 @@ kdb search <query>      # full-text search the corpus (prose by default)
 kdb index [--rebuild]   # refresh the search index (incremental; --rebuild = full)
 kdb collection {add|list}
                         # named directories to scope `kdb search` via -C <name>
+kdb codemap {ls|check|render}
+                        # index colocated CODEMAP.md domain maps (per-repo)
+                        # ls      list discovered maps (domain · root · updated)
+                        # check   lint coverage gaps, dangling roots, git staleness
+                        #         [--stale] [--orphans] [--strict] [--min-files N]
+                        # render  emit the derived index (table + coverage) to stdout
+                        # scope defaults to the enclosing git repo; paths repo-relative
 ```
 
 ### Markdown links

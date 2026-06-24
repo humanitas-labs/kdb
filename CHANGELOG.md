@@ -125,6 +125,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0] — 2026-06-24
+
+### Added
+
+- `kdb codemap` — a deterministic index/freshness layer over colocated `CODEMAP.md` domain maps. Three read-only subcommands:
+  - `ls [path] [--json]` — discover `CODEMAP.md` files and list their domains (domain · root · updated). JSON is the authoring-workflow's consumption format.
+  - `check [path] [--stale] [--orphans] [--strict] [--min-files N] [--json]` — lint coverage gaps (uncovered code subtrees above a threshold), dangling roots, and git-derived staleness (files changed under a map's scope since its pinned `commit`). `--strict` exits non-zero on any actionable finding for CI/pre-commit.
+  - `render [path]` — emit the derived index (domains table with per-map staleness + a coverage section) to stdout.
+- Maps are a **per-repo** concern: scope defaults to the nearest enclosing git repository (not the whole kdb workspace), and all `root`/`file` paths are repo-relative so maps stay portable with the codebase. Staleness runs git from the map's subtree, so it works even when the workspace root isn't itself a git repo. The repo-root `CODEMAP.md` is treated as the rendered index, not a domain map.
+
 ## [0.35.1] — 2026-05-11
 
 ### Fixed

@@ -5,19 +5,20 @@ use std::path::PathBuf;
 // ----------------------------
 // projects/kdb/src/main.rs
 //
-// struct Cli               L30
-// enum Command             L36
-// enum CollectionCmd      L220
-// enum ProjectsCmd        L234
-// enum TasksCmd           L290
-// enum TaskLabelCmd       L431
-// enum CyclesCmd          L449
-// enum LabelsCmd          L498
-// struct StatusKindArg    L535
-// fn resolve_kind()       L544
-// fn parse_bool_flag()    L555
-// enum StatusesCmd        L566
-// async fn main()         L648
+// struct Cli               L31
+// enum Command             L37
+// enum CodemapCmd         L226
+// enum CollectionCmd      L264
+// enum ProjectsCmd        L278
+// enum TasksCmd           L334
+// enum TaskLabelCmd       L475
+// enum CyclesCmd          L493
+// enum LabelsCmd          L542
+// struct StatusKindArg    L579
+// fn resolve_kind()       L588
+// fn parse_bool_flag()    L599
+// enum StatusesCmd        L610
+// async fn main()         L692
 // ----------------------------
 
 #[derive(Debug, Parser)]
@@ -213,6 +214,49 @@ enum Command {
     Collection {
         #[command(subcommand)]
         action: CollectionCmd,
+    },
+    /// Index colocated CODEMAP.md domain maps (discovery, freshness, index).
+    Codemap {
+        #[command(subcommand)]
+        action: CodemapCmd,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum CodemapCmd {
+    /// Discover CODEMAP.md files and list their domains.
+    #[command(alias = "ls")]
+    List {
+        /// Emit structured JSON output (the workflow's consumption format).
+        #[arg(long)]
+        json: bool,
+        /// Optional path to scope discovery to (defaults to enclosing git repo).
+        path: Option<PathBuf>,
+    },
+    /// Lint codemaps: dangling roots, coverage gaps, stale maps.
+    Check {
+        /// Only run staleness lints (default: run all).
+        #[arg(long)]
+        stale: bool,
+        /// Only run coverage/orphan lints (default: run all).
+        #[arg(long)]
+        orphans: bool,
+        /// Exit non-zero if any actionable finding (for CI/pre-commit).
+        #[arg(long)]
+        strict: bool,
+        /// Minimum supported code files for an uncovered subtree to be flagged.
+        #[arg(long = "min-files", default_value_t = kdb::codemap::check::DEFAULT_MIN_FILES)]
+        min_files: usize,
+        /// Emit structured JSON output.
+        #[arg(long)]
+        json: bool,
+        /// Optional path to scope to (defaults to enclosing git repo).
+        path: Option<PathBuf>,
+    },
+    /// Render the deterministic codemap index to stdout.
+    Render {
+        /// Optional path to scope to (defaults to enclosing git repo).
+        path: Option<PathBuf>,
     },
 }
 
@@ -870,6 +914,24 @@ async fn main() {
         Command::Collection { action } => match action {
             CollectionCmd::Add { path, name } => kdb::cmd::collection_add(name, path),
             CollectionCmd::List => kdb::cmd::collection_list(),
+        },
+        Command::Codemap { action } => match action {
+            CodemapCmd::List { json, path } => kdb::codemap::ls(path, json),
+            CodemapCmd::Check {
+                stale,
+                orphans,
+                strict,
+                min_files,
+                json,
+                path,
+            } => kdb::codemap::check::check(
+                path,
+                kdb::codemap::check::Lints { stale, orphans },
+                strict,
+                min_files,
+                json,
+            ),
+            CodemapCmd::Render { path } => kdb::codemap::render::render(path),
         },
     };
 

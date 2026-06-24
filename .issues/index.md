@@ -10,6 +10,8 @@ Local issue tracker for this kdb repo. Sorted by (status, priority).
 
 | Issue | Label | Status | Priority |
 | --- | --- | --- | --- |
+| [0065 — Codemap Index (colocated maps + derived index)](iss-0065-codemap-index.md) | feat | done | high |
+| [0066 — `kdb check` scoping (index build ignores subtree scope)](iss-0066-check-scoping.md) | perf | proposed | medium |
 | [0064 — Full-Text Search (`kdb search <query>`)](iss-0064-fulltext-search.md) | feat | in_progress | medium |
 | [0063 — Relational Layer (projects, cycles, tasks, labels)](iss-0063-relational-layer.md) | feat | in_progress | high |
 | [0060 — Transclusion Includes & kdb render](iss-0060-transclusion-and-render.md) | enhancement | done | high |
@@ -21,7 +23,6 @@ Local issue tracker for this kdb repo. Sorted by (status, priority).
 | [0040 — C# Language Support](iss-0040-csharp-language-support.md) | feat | proposed | medium |
 | [0047 — Benchmark Agent Performance With/Without kdb](iss-0047-agent-benchmark.md) | research | in_progress | medium |
 | [0036 — Language Plugin Interface](iss-0036-language-plugin-interface.md) | refactor | proposed | medium |
-| [0016 — Codemap](iss-0016-codemap.md) | feat | proposed | medium |
 | [0013 — Code File Links](iss-0013-code-file-links.md) | feat | proposed | medium |
 | [0005 — Code Comment Links Into KDB Docs](iss-0005-code-comment-links.md) | feat | proposed | medium |
 | [0003 — Databases and Bases](iss-0003-databases-bases.md) | feat | proposed | medium |
