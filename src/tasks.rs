@@ -1177,16 +1177,45 @@ pub fn render_list(tasks: &[TaskView]) -> String {
     let id_strs: Vec<String> = tasks.iter().map(|t| t.external_id()).collect();
     let id_w = id_strs.iter().map(|s| s.len()).max().unwrap_or(4).max(4);
 
+    // Show a project column only when the rows span more than one project
+    // (e.g. a `--space` rollup or `-P all`); single-project lists stay compact.
+    let multi_project = tasks
+        .iter()
+        .map(|t| t.project_slug.as_str())
+        .collect::<std::collections::HashSet<_>>()
+        .len()
+        > 1;
+
     let mut out = String::new();
-    out.push_str(&format!("{:<id_w$}  st    p  title\n", "id",));
-    for (t, id) in tasks.iter().zip(id_strs.iter()) {
-        out.push_str(&format!(
-            "{:<id_w$}  {}  {}  {}\n",
-            id,
-            status_glyph(&t.task.status),
-            t.task.priority,
-            t.task.title,
-        ));
+    if multi_project {
+        let proj_w = tasks
+            .iter()
+            .map(|t| t.project_slug.len())
+            .max()
+            .unwrap_or(7)
+            .max(7);
+        out.push_str(&format!("{:<id_w$}  {:<proj_w$}  st    p  title\n", "id", "project"));
+        for (t, id) in tasks.iter().zip(id_strs.iter()) {
+            out.push_str(&format!(
+                "{:<id_w$}  {:<proj_w$}  {}  {}  {}\n",
+                id,
+                t.project_slug,
+                status_glyph(&t.task.status),
+                t.task.priority,
+                t.task.title,
+            ));
+        }
+    } else {
+        out.push_str(&format!("{:<id_w$}  st    p  title\n", "id"));
+        for (t, id) in tasks.iter().zip(id_strs.iter()) {
+            out.push_str(&format!(
+                "{:<id_w$}  {}  {}  {}\n",
+                id,
+                status_glyph(&t.task.status),
+                t.task.priority,
+                t.task.title,
+            ));
+        }
     }
     out
 }
