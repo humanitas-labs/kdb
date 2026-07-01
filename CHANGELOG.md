@@ -137,7 +137,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Spaces** — a named grouping of related projects (migration `0007_spaces`). A space sits above projects the way a project sits above tasks (`Space ─< Project ─< Task`). Membership is one-to-many (a project belongs to at most one space via a nullable `projects.space_id`); spaces are flat (no nesting) and organizational only — they do not change task ids and impose no filesystem structure (`path` is an optional reference).
   - `kdb spaces {list,add,edit,show}` — manage spaces. `show` also lists member projects.
   - `kdb projects add/edit --space <slug>` assigns a project to a space (`--space ""` detaches); `kdb projects list --space <slug>` filters. Project list/show now surface the owning space.
-  - `kdb tasks list --space <slug>` rolls up tasks across every project in a space — the headline cross-project view. Multi-project listings (a space rollup, or `-P all`) gain a `project` column for provenance; single-project lists stay compact.
+  - `kdb tasks list --space <slug>` rolls up tasks across every project in a space — the headline cross-project view. Multi-project listings (a space rollup, or `-P all`) are grouped by project (not interleaved) and gain a `project` column for provenance; single-project lists stay compact and unchanged.
 
 ### Migration notes
 

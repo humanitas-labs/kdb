@@ -434,7 +434,11 @@ pub fn list(conn: &Connection, f: ListFilters) -> Result<Vec<TaskView>> {
         sql.push_str(" AND t.parent_id IS NULL");
     }
 
-    sql.push_str(" ORDER BY COALESCE(t.\"order\", printf('%012d', COALESCE(t.seq, t.child_seq))) ASC, t.seq ASC");
+    // Group by project first so cross-project listings (a `--space` rollup or
+    // `-P all`) keep each project's tasks together instead of interleaving.
+    // For a single-project list every row shares `p.slug`, so this is a no-op
+    // and the within-project order key still drives the sort.
+    sql.push_str(" ORDER BY p.slug ASC, COALESCE(t.\"order\", printf('%012d', COALESCE(t.seq, t.child_seq))) ASC, t.seq ASC");
 
     if let Some(limit) = f.limit {
         sql.push_str(" LIMIT ?");
