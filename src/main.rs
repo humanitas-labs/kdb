@@ -5,20 +5,21 @@ use std::path::PathBuf;
 // ----------------------------
 // projects/kdb/src/main.rs
 //
-// struct Cli               L31
-// enum Command             L37
-// enum CodemapCmd         L226
-// enum CollectionCmd      L264
-// enum ProjectsCmd        L278
-// enum TasksCmd           L334
-// enum TaskLabelCmd       L475
-// enum CyclesCmd          L493
-// enum LabelsCmd          L542
-// struct StatusKindArg    L579
-// fn resolve_kind()       L588
-// fn parse_bool_flag()    L599
-// enum StatusesCmd        L610
-// async fn main()         L692
+// struct Cli               L32
+// enum Command             L38
+// enum CodemapCmd         L232
+// enum CollectionCmd      L270
+// enum ProjectsCmd        L284
+// enum SpacesCmd          L349
+// enum TasksCmd           L399
+// enum TaskLabelCmd       L544
+// enum CyclesCmd          L562
+// enum LabelsCmd          L611
+// struct StatusKindArg    L648
+// fn resolve_kind()       L657
+// fn parse_bool_flag()    L668
+// enum StatusesCmd        L679
+// async fn main()         L761
 // ----------------------------
 
 #[derive(Debug, Parser)]
@@ -164,6 +165,11 @@ enum Command {
         #[command(subcommand)]
         action: ProjectsCmd,
     },
+    /// Manage spaces (named groupings of projects).
+    Spaces {
+        #[command(subcommand)]
+        action: SpacesCmd,
+    },
     /// Manage tasks in the relational layer.
     Tasks {
         #[command(subcommand)]
@@ -282,6 +288,9 @@ enum ProjectsCmd {
         /// Include archived projects.
         #[arg(short = 'a', long)]
         all: bool,
+        /// Filter to projects in this space (by slug).
+        #[arg(short = 's', long)]
+        space: Option<String>,
         /// Emit structured JSON output.
         #[arg(long)]
         json: bool,
@@ -302,6 +311,9 @@ enum ProjectsCmd {
         /// Optional description.
         #[arg(short = 'd', long)]
         description: Option<String>,
+        /// Assign to this space (by slug).
+        #[arg(short = 's', long)]
+        space: Option<String>,
     },
     /// Edit an existing project.
     Edit {
@@ -319,10 +331,63 @@ enum ProjectsCmd {
         status: Option<String>,
         #[arg(short = 'd', long)]
         description: Option<String>,
+        /// Assign to this space (by slug); pass "" to detach (make loose).
+        #[arg(short = 's', long)]
+        space: Option<String>,
     },
     /// Show a project.
     Show {
         /// Project slug to show.
+        slug: String,
+        /// Emit structured JSON output.
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum SpacesCmd {
+    /// List spaces.
+    #[command(alias = "ls")]
+    List {
+        /// Include archived spaces.
+        #[arg(short = 'a', long)]
+        all: bool,
+        /// Emit structured JSON output.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Add a new space.
+    Add {
+        /// Unique slug (e.g. "acme").
+        slug: String,
+        /// Display name (defaults to slug).
+        #[arg(short = 'n', long)]
+        name: Option<String>,
+        /// Optional relative path from kdb root (e.g. "projects/acme").
+        #[arg(short = 'p', long)]
+        path: Option<String>,
+        /// Optional description.
+        #[arg(short = 'd', long)]
+        description: Option<String>,
+    },
+    /// Edit an existing space.
+    Edit {
+        /// Space slug to edit.
+        slug: String,
+        #[arg(short = 'n', long)]
+        name: Option<String>,
+        #[arg(short = 'p', long)]
+        path: Option<String>,
+        /// Status slug (must exist in project_statuses).
+        #[arg(long)]
+        status: Option<String>,
+        #[arg(short = 'd', long)]
+        description: Option<String>,
+    },
+    /// Show a space and its member projects.
+    Show {
+        /// Space slug to show.
         slug: String,
         /// Emit structured JSON output.
         #[arg(long)]
@@ -342,6 +407,10 @@ enum TasksCmd {
         /// Filter by project slug (defaults to the active project).
         #[arg(short = 'P', long)]
         project: Option<String>,
+        /// Filter to all projects in this space (by slug). Overrides the
+        /// active-project default; combine with -P to intersect.
+        #[arg(short = 'S', long)]
+        space: Option<String>,
         /// Filter by cycle key.
         #[arg(short = 'c', long)]
         cycle: Option<String>,
@@ -742,14 +811,15 @@ async fn main() {
         Command::Lsp { path } => kdb::lsp::serve(path).await,
         Command::Update { check } => kdb::cmd::update(check),
         Command::Projects { action } => match action {
-            ProjectsCmd::List { all, json } => kdb::cmd::projects_list(all, json),
+            ProjectsCmd::List { all, space, json } => kdb::cmd::projects_list(all, space, json),
             ProjectsCmd::Add {
                 slug,
                 alias,
                 path,
                 name,
                 description,
-            } => kdb::cmd::projects_add(slug, alias, path, name, description),
+                space,
+            } => kdb::cmd::projects_add(slug, alias, path, name, description, space),
             ProjectsCmd::Edit {
                 slug,
                 alias,
@@ -757,12 +827,31 @@ async fn main() {
                 path,
                 status,
                 description,
-            } => kdb::cmd::projects_edit(slug, alias, name, path, status, description),
+                space,
+            } => kdb::cmd::projects_edit(slug, alias, name, path, status, description, space),
             ProjectsCmd::Show { slug, json } => kdb::cmd::projects_show(slug, json),
+        },
+        Command::Spaces { action } => match action {
+            SpacesCmd::List { all, json } => kdb::cmd::spaces_list(all, json),
+            SpacesCmd::Add {
+                slug,
+                name,
+                path,
+                description,
+            } => kdb::cmd::spaces_add(slug, name, path, description),
+            SpacesCmd::Edit {
+                slug,
+                name,
+                path,
+                status,
+                description,
+            } => kdb::cmd::spaces_edit(slug, name, path, status, description),
+            SpacesCmd::Show { slug, json } => kdb::cmd::spaces_show(slug, json),
         },
         Command::Tasks { action } => match action.unwrap_or(TasksCmd::List {
             status: "open".to_string(),
             project: None,
+            space: None,
             cycle: None,
             priority: None,
             limit: None,
@@ -772,12 +861,22 @@ async fn main() {
             TasksCmd::List {
                 status,
                 project,
+                space,
                 cycle,
                 priority,
                 limit,
                 include_children,
                 json,
-            } => kdb::cmd::tasks_list(status, project, cycle, priority, limit, include_children, json),
+            } => kdb::cmd::tasks_list(
+                status,
+                project,
+                space,
+                cycle,
+                priority,
+                limit,
+                include_children,
+                json,
+            ),
             TasksCmd::Add {
                 title,
                 project,

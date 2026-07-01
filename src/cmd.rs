@@ -19,6 +19,7 @@ use crate::materialize;
 use crate::projects;
 use crate::render;
 use crate::search;
+use crate::spaces;
 use crate::statuses;
 use crate::symbols;
 use crate::tasks;
@@ -31,69 +32,75 @@ use rusqlite::Connection;
 // -----------------------------------------------------------
 // projects/kdb/src/cmd.rs
 //
-// pub struct CmdContext                                  L100
-//   pub fn from_path()                                   L111
-//   pub fn build_index()                                 L121
-//   pub fn build_workspace_index()                       L126
-//   pub fn rel_path()                                    L134
-// pub fn init()                                          L161
-// pub fn root()                                          L216
-// pub fn check()                                         L226
-// pub fn tree()                                          L243
-// pub fn symbols()                                       L291
-// pub fn refs()                                          L352
-// pub fn deps()                                          L423
-// pub fn graph()                                         L458
-// pub fn render()                                        L473
-// pub fn format()                                        L523
-// pub fn update()                                        L564
-// pub fn projects_list()                                 L570
-// pub fn projects_add()                                  L586
-// pub fn projects_edit()                                 L613
-// pub fn projects_show()                                 L639
-// fn resolve_project()                                   L658
-// fn resolve_cycle()                                     L676
-// fn resolve_parent()                                    L690
-// fn parse_statuses()                                    L703
-// pub fn tasks_list()                                    L741
-// pub fn tasks_add()                                     L784
-// fn resolve_add_position()                              L836
-// pub fn tasks_edit()                                    L862
-// pub fn tasks_view()                                    L913
-// struct TaskViewOutput                                  L924
-// pub fn tasks_move()                                    L944
-// pub fn tasks_delete()                                  L988
-// pub fn tasks_restore()                                L1008
-// pub fn tasks_purge()                                  L1019
-// pub fn cycles_list()                                  L1057
-// pub fn cycles_add()                                   L1071
-// pub fn cycles_edit()                                  L1099
-// pub fn cycles_show()                                  L1124
-// pub fn labels_list()                                  L1140
-// pub fn labels_add()                                   L1154
-// pub fn labels_edit()                                  L1169
-// pub fn labels_show()                                  L1184
-// pub fn tasks_label_add()                              L1201
-// pub fn tasks_label_rm()                               L1220
-// pub fn statuses_list()                                L1239
-// pub fn statuses_add()                                 L1256
-// fn resolve_add_flag()                                 L1287
-// pub fn statuses_edit()                                L1307
-// fn resolve_edit_flag()                                L1340
-// pub fn statuses_rm()                                  L1376
-// pub fn statuses_show()                                L1385
-// pub fn tasks_set_status()                             L1401
-// pub fn search()                                       L1412
-// fn print_line_context()                               L1497
-// pub fn index()                                        L1525
-// pub fn collection_add()                               L1540
-// pub fn collection_list()                              L1557
-// mod tests                                             L1572
-// fn setup()                                            L1577
-// fn open_selector_resolves_to_non_closed_statuses()    L1585
-// fn all_selector_means_no_filter()                     L1594
-// fn unknown_status_is_rejected()                       L1600
-// fn open_default_survives_seeded_status_removal()      L1606
+// pub struct CmdContext                                  L107
+//   pub fn from_path()                                   L118
+//   pub fn build_index()                                 L128
+//   pub fn build_workspace_index()                       L133
+//   pub fn rel_path()                                    L141
+// pub fn init()                                          L168
+// pub fn root()                                          L223
+// pub fn check()                                         L233
+// pub fn tree()                                          L250
+// pub fn symbols()                                       L298
+// pub fn refs()                                          L359
+// pub fn deps()                                          L430
+// pub fn graph()                                         L465
+// pub fn render()                                        L480
+// pub fn format()                                        L530
+// pub fn update()                                        L571
+// pub fn projects_list()                                 L578
+// pub fn projects_add()                                  L597
+// pub fn projects_edit()                                 L630
+// pub fn projects_show()                                 L664
+// fn resolve_space_id()                                  L685
+// fn ensure_space_exists()                               L692
+// pub fn spaces_list()                                   L697
+// pub fn spaces_add()                                    L713
+// pub fn spaces_edit()                                   L735
+// pub fn spaces_show()                                   L759
+// fn resolve_project()                                   L786
+// fn resolve_cycle()                                     L804
+// fn resolve_parent()                                    L818
+// fn parse_statuses()                                    L831
+// pub fn tasks_list()                                    L869
+// pub fn tasks_add()                                     L924
+// fn resolve_add_position()                              L976
+// pub fn tasks_edit()                                   L1002
+// pub fn tasks_view()                                   L1053
+// struct TaskViewOutput                                 L1064
+// pub fn tasks_move()                                   L1084
+// pub fn tasks_delete()                                 L1128
+// pub fn tasks_restore()                                L1148
+// pub fn tasks_purge()                                  L1159
+// pub fn cycles_list()                                  L1197
+// pub fn cycles_add()                                   L1211
+// pub fn cycles_edit()                                  L1239
+// pub fn cycles_show()                                  L1264
+// pub fn labels_list()                                  L1280
+// pub fn labels_add()                                   L1294
+// pub fn labels_edit()                                  L1309
+// pub fn labels_show()                                  L1324
+// pub fn tasks_label_add()                              L1341
+// pub fn tasks_label_rm()                               L1360
+// pub fn statuses_list()                                L1379
+// pub fn statuses_add()                                 L1396
+// fn resolve_add_flag()                                 L1427
+// pub fn statuses_edit()                                L1447
+// fn resolve_edit_flag()                                L1480
+// pub fn statuses_rm()                                  L1516
+// pub fn statuses_show()                                L1525
+// pub fn tasks_set_status()                             L1541
+// pub fn search()                                       L1552
+// fn print_line_context()                               L1637
+// pub fn index()                                        L1665
+// pub fn collection_add()                               L1680
+// pub fn collection_list()                              L1697
+// mod tests                                             L1712
+// fn setup()                                            L1717
+// fn open_selector_resolves_to_non_closed_statuses()    L1725
+// fn all_selector_means_no_filter()                     L1734
+// fn unknown_status_is_rejected()                       L1740
+// fn open_default_survives_seeded_status_removal()      L1746
 // -----------------------------------------------------------
 
 /// CLI command context: resolved start path + workspace state.
@@ -567,10 +574,14 @@ pub fn update(check_only: bool) -> Result<()> {
 }
 
 /// List projects. Archived projects are hidden unless `include_archived`.
-pub fn projects_list(include_archived: bool, as_json: bool) -> Result<()> {
+/// When `space` is given, only projects in that space are shown.
+pub fn projects_list(include_archived: bool, space: Option<String>, as_json: bool) -> Result<()> {
     let ctx = CmdContext::from_path(None)?;
     let conn = db::open(&ctx.workspace.root)?;
-    let rows = projects::list(&conn, include_archived)?;
+    if let Some(slug) = space.as_deref() {
+        ensure_space_exists(&conn, slug)?;
+    }
+    let rows = projects::list(&conn, include_archived, space.as_deref())?;
 
     if as_json {
         let output =
@@ -589,9 +600,14 @@ pub fn projects_add(
     path: String,
     name: Option<String>,
     description: Option<String>,
+    space: Option<String>,
 ) -> Result<()> {
     let ctx = CmdContext::from_path(None)?;
     let conn = db::open(&ctx.workspace.root)?;
+    let space_id = match space.as_deref() {
+        Some(slug) if !slug.is_empty() => Some(resolve_space_id(&conn, slug)?),
+        _ => None,
+    };
     let created = projects::add(
         &conn,
         projects::AddArgs {
@@ -600,6 +616,7 @@ pub fn projects_add(
             name: name.as_deref(),
             path: &path,
             description: description.as_deref(),
+            space_id,
         },
     )?;
     println!(
@@ -617,9 +634,16 @@ pub fn projects_edit(
     path: Option<String>,
     status: Option<String>,
     description: Option<String>,
+    space: Option<String>,
 ) -> Result<()> {
     let ctx = CmdContext::from_path(None)?;
     let conn = db::open(&ctx.workspace.root)?;
+    // None: leave unchanged. Some(""): detach. Some(slug): assign.
+    let space_id = match space.as_deref() {
+        None => None,
+        Some(s) if s.is_empty() => Some(None),
+        Some(s) => Some(Some(resolve_space_id(&conn, s)?)),
+    };
     let updated = projects::edit(
         &conn,
         &slug,
@@ -629,6 +653,7 @@ pub fn projects_edit(
             path: path.as_deref(),
             status: status.as_deref(),
             description: description.as_deref(),
+            space_id,
         },
     )?;
     println!("updated project {}", updated.slug);
@@ -648,6 +673,109 @@ pub fn projects_show(slug: String, as_json: bool) -> Result<()> {
         println!("{output}");
     } else {
         print!("{}", projects::render_show(&project));
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Spaces
+// ---------------------------------------------------------------------------
+
+/// Resolve a space slug to its numeric id, erroring if it doesn't exist.
+fn resolve_space_id(conn: &Connection, slug: &str) -> Result<i64> {
+    Ok(spaces::get_by_slug(conn, slug)?
+        .with_context(|| format!("space not found: {slug}"))?
+        .id)
+}
+
+/// Verify a space exists (used by filters that don't need the id).
+fn ensure_space_exists(conn: &Connection, slug: &str) -> Result<()> {
+    resolve_space_id(conn, slug).map(|_| ())
+}
+
+/// List spaces. Archived spaces are hidden unless `include_archived`.
+pub fn spaces_list(include_archived: bool, as_json: bool) -> Result<()> {
+    let ctx = CmdContext::from_path(None)?;
+    let conn = db::open(&ctx.workspace.root)?;
+    let rows = spaces::list(&conn, include_archived)?;
+
+    if as_json {
+        let output =
+            serde_json::to_string_pretty(&rows).context("failed to serialize spaces as JSON")?;
+        println!("{output}");
+    } else {
+        print!("{}", spaces::render_list(&rows));
+    }
+    Ok(())
+}
+
+/// Insert a new space.
+pub fn spaces_add(
+    slug: String,
+    name: Option<String>,
+    path: Option<String>,
+    description: Option<String>,
+) -> Result<()> {
+    let ctx = CmdContext::from_path(None)?;
+    let conn = db::open(&ctx.workspace.root)?;
+    let created = spaces::add(
+        &conn,
+        spaces::AddArgs {
+            slug: &slug,
+            name: name.as_deref(),
+            path: path.as_deref(),
+            description: description.as_deref(),
+        },
+    )?;
+    println!("added space {}", created.slug);
+    Ok(())
+}
+
+/// Update mutable fields on an existing space.
+pub fn spaces_edit(
+    slug: String,
+    name: Option<String>,
+    path: Option<String>,
+    status: Option<String>,
+    description: Option<String>,
+) -> Result<()> {
+    let ctx = CmdContext::from_path(None)?;
+    let conn = db::open(&ctx.workspace.root)?;
+    let updated = spaces::edit(
+        &conn,
+        &slug,
+        spaces::EditArgs {
+            name: name.as_deref(),
+            path: path.as_deref(),
+            status: status.as_deref(),
+            description: description.as_deref(),
+        },
+    )?;
+    println!("updated space {}", updated.slug);
+    Ok(())
+}
+
+/// Show a single space and the projects that belong to it.
+pub fn spaces_show(slug: String, as_json: bool) -> Result<()> {
+    let ctx = CmdContext::from_path(None)?;
+    let conn = db::open(&ctx.workspace.root)?;
+    let space =
+        spaces::get_by_slug(&conn, &slug)?.with_context(|| format!("space not found: {slug}"))?;
+    let members = projects::list(&conn, true, Some(&slug))?;
+
+    if as_json {
+        let payload = serde_json::json!({ "space": space, "projects": members });
+        let output =
+            serde_json::to_string_pretty(&payload).context("failed to serialize space as JSON")?;
+        println!("{output}");
+    } else {
+        print!("{}", spaces::render_show(&space));
+        println!("\nprojects:");
+        if members.is_empty() {
+            println!("  (none)");
+        } else {
+            print!("{}", projects::render_list(&members));
+        }
     }
     Ok(())
 }
@@ -741,6 +869,7 @@ fn parse_statuses(conn: &Connection, s: &str) -> Result<Option<Vec<String>>> {
 pub fn tasks_list(
     status: String,
     project: Option<String>,
+    space: Option<String>,
     cycle: Option<String>,
     priority: Option<i64>,
     limit: Option<i64>,
@@ -755,6 +884,16 @@ pub fn tasks_list(
         .as_ref()
         .map(|v| v.iter().map(|s| s.as_str()).collect());
 
+    let space_slug = match space.as_deref() {
+        Some("all") | Some("") | None => None,
+        Some(s) => {
+            ensure_space_exists(&conn, s)?;
+            Some(s.to_string())
+        }
+    };
+
+    // A space filter provides a cross-project view, so it suppresses the
+    // active-project default; an explicit -P still narrows within the space.
     let project_slug = match project.as_deref() {
         Some("all") | Some("") | None => None,
         Some(s) => Some(s.to_string()),
@@ -763,6 +902,7 @@ pub fn tasks_list(
     let filters = tasks::ListFilters {
         statuses: statuses_refs.as_deref(),
         project_slug: project_slug.as_deref(),
+        space_slug: space_slug.as_deref(),
         cycle_key: cycle.as_deref(),
         priority,
         limit,

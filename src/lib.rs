@@ -37,6 +37,7 @@ pub mod projects;
 pub mod render;
 pub mod resolve;
 pub mod search;
+pub mod spaces;
 pub mod statuses;
 pub mod symbols;
 pub mod tasks;
@@ -64,12 +65,13 @@ pub mod workspace;
 // pub mod render          L37
 // pub mod resolve         L38
 // pub mod search          L39
-// pub mod statuses        L40
-// pub mod symbols         L41
-// pub mod tasks           L42
-// pub mod tasks_import    L43
-// pub mod tree            L44
-// pub mod update          L45
-// pub mod workspace       L46
+// pub mod spaces          L40
+// pub mod statuses        L41
+// pub mod symbols         L42
+// pub mod tasks           L43
+// pub mod tasks_import    L44
+// pub mod tree            L45
+// pub mod update          L46
+// pub mod workspace       L47
 // ---------------------------
 

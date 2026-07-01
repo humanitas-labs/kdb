@@ -438,6 +438,7 @@ mod tests {
                 name: None,
                 path: "projects/kdb",
                 description: None,
+                space_id: None,
             },
         )
         .unwrap();

@@ -13,26 +13,27 @@ use std::path::Path;
 // ----------------------------------------------
 // projects/kdb/src/projects.rs
 //
-// pub struct Project                         L39
-//   fn from_row()                            L52
-// const SELECT_COLS                          L67
-// pub fn list()                              L73
-// pub fn get_by_slug()                       L90
-// pub fn get_by_alias()                      L99
-// pub struct AddArgs                        L107
-// pub fn add()                              L116
-// pub struct EditArgs                       L130
-//   fn is_empty()                           L139
-// pub fn edit()                             L149
-// pub fn resolve_active()                   L181
-// pub fn render_list()                      L203
-// pub fn render_show()                      L247
-// mod tests                                 L263
-// fn setup()                                L269
-// fn add_then_list_and_show()               L277
-// fn alias_lowercased_input_is_upcased()    L298
-// fn duplicate_alias_errors()               L315
-// fn edit_updates_fields_and_timestamp()    L342
+// pub struct Project                         L40
+//   fn from_row()                            L57
+// const SELECT_COLS                          L74
+// const FROM_JOIN                            L79
+// pub fn list()                              L84
+// pub fn get_by_slug()                      L109
+// pub fn get_by_alias()                     L118
+// pub struct AddArgs                        L126
+// pub fn add()                              L137
+// pub struct EditArgs                       L151
+//   fn is_empty()                           L163
+// pub fn edit()                             L174
+// pub fn resolve_active()                   L210
+// pub fn render_list()                      L232
+// pub fn render_show()                      L287
+// mod tests                                 L307
+// fn setup()                                L313
+// fn add_then_list_and_show()               L321
+// fn alias_lowercased_input_is_upcased()    L343
+// fn duplicate_alias_errors()               L361
+// fn edit_updates_fields_and_timestamp()    L390
 // ----------------------------------------------
 
 #[derive(Debug, Clone, Serialize)]
@@ -44,6 +45,10 @@ pub struct Project {
     pub path: String,
     pub status: String,
     pub description: Option<String>,
+    /// FK into `spaces(id)`; `None` for loose projects.
+    pub space_id: Option<i64>,
+    /// Slug of the owning space (joined), `None` for loose projects.
+    pub space_slug: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -58,37 +63,51 @@ impl Project {
             path: row.get(4)?,
             status: row.get(5)?,
             description: row.get(6)?,
-            created_at: row.get(7)?,
-            updated_at: row.get(8)?,
+            space_id: row.get(7)?,
+            space_slug: row.get(8)?,
+            created_at: row.get(9)?,
+            updated_at: row.get(10)?,
         })
     }
 }
 
-const SELECT_COLS: &str =
-    "p.id, p.slug, p.alias, p.name, p.path, p.status, p.description, p.created_at, p.updated_at";
+const SELECT_COLS: &str = "p.id, p.slug, p.alias, p.name, p.path, p.status, p.description, \
+     p.space_id, s.slug, p.created_at, p.updated_at";
+
+/// Shared FROM clause: projects left-joined to their owning space so
+/// `space_slug` resolves in one query.
+const FROM_JOIN: &str = "FROM projects p LEFT JOIN spaces s ON s.id = p.space_id";
 
 /// List projects, ordered by slug. Projects whose status is marked
 /// `is_archived` in `project_statuses` are excluded unless `include_archived`
 /// is set.
-pub fn list(conn: &Connection, include_archived: bool) -> Result<Vec<Project>> {
-    let sql = if include_archived {
-        format!("SELECT {SELECT_COLS} FROM projects p ORDER BY p.slug")
-    } else {
-        format!(
-            "SELECT {SELECT_COLS} FROM projects p \
-             JOIN project_statuses ps ON ps.slug = p.status \
-             WHERE ps.is_archived = 0 ORDER BY p.slug"
-        )
-    };
+pub fn list(conn: &Connection, include_archived: bool, space: Option<&str>) -> Result<Vec<Project>> {
+    let mut sql = format!("SELECT {SELECT_COLS} {FROM_JOIN}");
+    let mut args: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+    let mut wheres: Vec<String> = Vec::new();
+    if !include_archived {
+        sql.push_str(" JOIN project_statuses ps ON ps.slug = p.status");
+        wheres.push("ps.is_archived = 0".to_string());
+    }
+    if let Some(space_slug) = space {
+        wheres.push("s.slug = ?".to_string());
+        args.push(Box::new(space_slug.to_string()));
+    }
+    if !wheres.is_empty() {
+        sql.push_str(" WHERE ");
+        sql.push_str(&wheres.join(" AND "));
+    }
+    sql.push_str(" ORDER BY p.slug");
     let mut stmt = conn.prepare(&sql)?;
-    let rows = stmt.query_map([], Project::from_row)?;
+    let params = rusqlite::params_from_iter(args.iter().map(|b| b.as_ref()));
+    let rows = stmt.query_map(params, Project::from_row)?;
     rows.collect::<rusqlite::Result<Vec<_>>>()
         .context("failed to read projects")
 }
 
 /// Fetch a project by slug. Returns `None` if no match.
 pub fn get_by_slug(conn: &Connection, slug: &str) -> Result<Option<Project>> {
-    let sql = format!("SELECT {SELECT_COLS} FROM projects p WHERE p.slug = ?");
+    let sql = format!("SELECT {SELECT_COLS} {FROM_JOIN} WHERE p.slug = ?");
     let mut stmt = conn.prepare(&sql)?;
     stmt.query_row([slug], Project::from_row)
         .optional()
@@ -97,7 +116,7 @@ pub fn get_by_slug(conn: &Connection, slug: &str) -> Result<Option<Project>> {
 
 /// Fetch a project by alias (case-insensitive). Returns `None` if no match.
 pub fn get_by_alias(conn: &Connection, alias: &str) -> Result<Option<Project>> {
-    let sql = format!("SELECT {SELECT_COLS} FROM projects p WHERE p.alias = ?");
+    let sql = format!("SELECT {SELECT_COLS} {FROM_JOIN} WHERE p.alias = ?");
     let mut stmt = conn.prepare(&sql)?;
     stmt.query_row([alias.to_ascii_uppercase()], Project::from_row)
         .optional()
@@ -110,6 +129,8 @@ pub struct AddArgs<'a> {
     pub name: Option<&'a str>,
     pub path: &'a str,
     pub description: Option<&'a str>,
+    /// Owning space id (already resolved from slug), or `None` for a loose project.
+    pub space_id: Option<i64>,
 }
 
 /// Insert a new project. Fails if slug, alias, or path is already taken.
@@ -117,9 +138,9 @@ pub fn add(conn: &Connection, args: AddArgs) -> Result<Project> {
     let name = args.name.unwrap_or(args.slug);
     let alias = args.alias.to_ascii_uppercase();
     conn.execute(
-        "INSERT INTO projects (slug, alias, name, path, description) \
-         VALUES (?, ?, ?, ?, ?)",
-        params![args.slug, alias, name, args.path, args.description],
+        "INSERT INTO projects (slug, alias, name, path, description, space_id) \
+         VALUES (?, ?, ?, ?, ?, ?)",
+        params![args.slug, alias, name, args.path, args.description, args.space_id],
     )
     .with_context(|| format!("failed to insert project {}", args.slug))?;
     get_by_slug(conn, args.slug)?
@@ -133,6 +154,9 @@ pub struct EditArgs<'a> {
     pub path: Option<&'a str>,
     pub status: Option<&'a str>,
     pub description: Option<&'a str>,
+    /// Space membership: outer `None` leaves it unchanged; `Some(None)`
+    /// detaches (loose); `Some(Some(id))` assigns to that space.
+    pub space_id: Option<Option<i64>>,
 }
 
 impl EditArgs<'_> {
@@ -142,6 +166,7 @@ impl EditArgs<'_> {
             && self.path.is_none()
             && self.status.is_none()
             && self.description.is_none()
+            && self.space_id.is_none()
     }
 }
 
@@ -161,6 +186,7 @@ pub fn edit(conn: &Connection, slug: &str, args: EditArgs) -> Result<Project> {
             path        = COALESCE(?, path), \
             status      = COALESCE(?, status), \
             description = COALESCE(?, description), \
+            space_id    = CASE WHEN ? THEN ? ELSE space_id END, \
             updated_at  = strftime('%Y-%m-%dT%H:%M:%fZ','now') \
          WHERE slug = ?",
         params![
@@ -169,6 +195,9 @@ pub fn edit(conn: &Connection, slug: &str, args: EditArgs) -> Result<Project> {
             args.path,
             args.status,
             args.description,
+            // flag: whether to touch space_id at all; value: the new id (may be NULL).
+            args.space_id.is_some(),
+            args.space_id.flatten(),
             slug
         ],
     )
@@ -183,7 +212,7 @@ pub fn resolve_active(conn: &Connection, root: &Path, cwd: &Path) -> Result<Opti
         Ok(r) => r.to_path_buf(),
         Err(_) => return Ok(None),
     };
-    let all = list(conn, true)?;
+    let all = list(conn, true, None)?;
     let mut best: Option<Project> = None;
     for p in all {
         let proj_path = Path::new(&p.path);
@@ -228,16 +257,27 @@ pub fn render_list(projects: &[Project]) -> String {
         .max()
         .unwrap_or(6)
         .max(6);
+    let space_w = projects
+        .iter()
+        .map(|p| p.space_slug.as_deref().unwrap_or("-").len())
+        .max()
+        .unwrap_or(5)
+        .max(5);
 
     let mut out = String::new();
     out.push_str(&format!(
-        "{:<slug_w$}  {:<alias_w$}  {:<name_w$}  {:<status_w$}  path\n",
-        "slug", "alias", "name", "status",
+        "{:<slug_w$}  {:<alias_w$}  {:<name_w$}  {:<status_w$}  {:<space_w$}  path\n",
+        "slug", "alias", "name", "status", "space",
     ));
     for p in projects {
         out.push_str(&format!(
-            "{:<slug_w$}  {:<alias_w$}  {:<name_w$}  {:<status_w$}  {}\n",
-            p.slug, p.alias, p.name, p.status, p.path,
+            "{:<slug_w$}  {:<alias_w$}  {:<name_w$}  {:<status_w$}  {:<space_w$}  {}\n",
+            p.slug,
+            p.alias,
+            p.name,
+            p.status,
+            p.space_slug.as_deref().unwrap_or("-"),
+            p.path,
         ));
     }
     out
@@ -251,6 +291,10 @@ pub fn render_show(p: &Project) -> String {
     out.push_str(&format!("name:        {}\n", p.name));
     out.push_str(&format!("path:        {}\n", p.path));
     out.push_str(&format!("status:      {}\n", p.status));
+    out.push_str(&format!(
+        "space:       {}\n",
+        p.space_slug.as_deref().unwrap_or("-")
+    ));
     if let Some(desc) = &p.description {
         out.push_str(&format!("description: {desc}\n"));
     }
@@ -284,6 +328,7 @@ mod tests {
                 name: Some("kdb"),
                 path: "projects/kdb",
                 description: Some("knowledge db"),
+                space_id: None,
             },
         )
         .unwrap();
@@ -305,6 +350,7 @@ mod tests {
                 name: None,
                 path: "projects/hermaeus",
                 description: None,
+                space_id: None,
             },
         )
         .unwrap();
@@ -322,6 +368,7 @@ mod tests {
                 name: None,
                 path: "projects/kdb",
                 description: None,
+                space_id: None,
             },
         )
         .unwrap();
@@ -333,6 +380,7 @@ mod tests {
                 name: None,
                 path: "projects/other",
                 description: None,
+                space_id: None,
             },
         );
         assert!(err.is_err());
@@ -349,6 +397,7 @@ mod tests {
                 name: None,
                 path: "projects/kdb",
                 description: None,
+                space_id: None,
             },
         )
         .unwrap();

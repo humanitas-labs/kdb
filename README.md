@@ -6,12 +6,12 @@ outline: |
       ▪ Supported languages       L31
     ◦ Quickstart                  L39
     ◦ Commands                    L68
-      ▪ Markdown links           L109
-      ▪ Transclusion             L118
-      ▪ Full-text search         L129
-      ▪ LSP                      L151
-    ◦ Development                L169
-    ◦ License                    L173
+      ▪ Markdown links           L122
+      ▪ Transclusion             L131
+      ▪ Full-text search         L142
+      ▪ LSP                      L164
+    ◦ Development                L182
+    ◦ License                    L186
 ---
 
 # kdb
@@ -84,6 +84,12 @@ kdb fmt [path]          # generate/update code index headers
 kdb lsp                 # start the language server (stdio)
 kdb projects {list|add|edit|show}
                         # register and manage projects (slug, 2–6 char alias)
+                        # --space <slug> assigns/filters by space ("" detaches)
+kdb spaces {list|add|edit|show}
+                        # named groupings of projects (acme → globex, …)
+                        # one space per project; flat; organizational only
+                        # `spaces show` lists member projects
+                        # `tasks list --space <slug>` rolls up tasks across members
 kdb tasks {list|add|edit|view|delete|done|park|reopen|label}
                          # manage tasks (per-project seq ids, priorities, statuses)
                          # `show` remains as an alias for `view`; `d` for `delete`

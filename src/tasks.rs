@@ -39,56 +39,56 @@ use serde::Serialize;
 // const SELECT_JOINS                                       L352
 // fn view_from_row()                                       L357
 // pub struct ListFilters                                   L386
-// pub fn list()                                            L399
-// pub fn get()                                             L447
-// pub fn get_by_row_id()                                   L479
-// pub struct ChildTask                                     L491
-// pub fn descendants()                                     L503
-// pub fn children()                                        L528
-// pub struct AddArgs                                       L558
-// pub fn add()                                             L578
-// pub struct EditArgs                                      L657
-//   fn is_empty()                                          L666
-// pub fn edit()                                            L686
-// pub enum Side                                            L775
-// pub enum MoveTarget                                      L782
-// pub fn order_key_adjacent()                              L791
-// pub fn move_task()                                       L819
-// fn ensure_same_context()                                 L882
-// enum Direction                                           L901
-// fn neighbor_order()                                      L910
-// pub fn set_status()                                      L951
-// fn subtree_ids()                                         L972
-// pub fn soft_delete()                                     L988
-// pub fn restore()                                        L1007
-// pub fn hard_delete()                                    L1044
-// pub fn get_including_deleted()                          L1059
-// pub struct PurgeFilters                                 L1094
-// pub fn purge()                                          L1104
-// fn status_glyph()                                       L1155
-// pub fn render_list()                                    L1167
-// pub fn render_show()                                    L1190
-// mod tests                                               L1233
-// fn setup()                                              L1240
-// fn parse_task_id_uppercases_alias()                     L1259
-// fn external_id_is_zero_padded()                         L1269
-// fn parse_dotted_task_id_round_trips()                   L1276
-// fn add_auto_seq_then_explicit_seq()                     L1295
-// fn child_does_not_consume_top_level_seq()               L1352
-// fn unparent_allocates_top_level_seq()                   L1368
-// fn reparent_top_level_to_child_clears_seq()             L1391
-// fn reparent_between_parents_renumbers_child_seq()       L1414
-// fn grandchild_dotted_id()                               L1438
-// fn add_with_status()                                    L1449
-// fn set_status_transitions()                             L1471
-// fn children_are_ordered_by_order_key()                  L1500
-// fn render_show_includes_children_section()              L1568
-// fn add_task()                                           L1608
-// fn between_sits_strictly_between_various_pairs()        L1627
-// fn move_task_before_and_after_reorders()                L1658
-// fn move_task_top_and_bottom()                           L1708
-// fn move_task_rejects_different_parent()                 L1747
-// fn order_key_adjacent_after_sits_between_neighbors()    L1764
+// pub fn list()                                            L401
+// pub fn get()                                             L453
+// pub fn get_by_row_id()                                   L485
+// pub struct ChildTask                                     L497
+// pub fn descendants()                                     L509
+// pub fn children()                                        L534
+// pub struct AddArgs                                       L564
+// pub fn add()                                             L584
+// pub struct EditArgs                                      L663
+//   fn is_empty()                                          L672
+// pub fn edit()                                            L692
+// pub enum Side                                            L781
+// pub enum MoveTarget                                      L788
+// pub fn order_key_adjacent()                              L797
+// pub fn move_task()                                       L825
+// fn ensure_same_context()                                 L888
+// enum Direction                                           L907
+// fn neighbor_order()                                      L916
+// pub fn set_status()                                      L957
+// fn subtree_ids()                                         L978
+// pub fn soft_delete()                                     L994
+// pub fn restore()                                        L1013
+// pub fn hard_delete()                                    L1050
+// pub fn get_including_deleted()                          L1065
+// pub struct PurgeFilters                                 L1100
+// pub fn purge()                                          L1110
+// fn status_glyph()                                       L1161
+// pub fn render_list()                                    L1173
+// pub fn render_show()                                    L1196
+// mod tests                                               L1239
+// fn setup()                                              L1246
+// fn parse_task_id_uppercases_alias()                     L1266
+// fn external_id_is_zero_padded()                         L1276
+// fn parse_dotted_task_id_round_trips()                   L1283
+// fn add_auto_seq_then_explicit_seq()                     L1302
+// fn child_does_not_consume_top_level_seq()               L1359
+// fn unparent_allocates_top_level_seq()                   L1375
+// fn reparent_top_level_to_child_clears_seq()             L1398
+// fn reparent_between_parents_renumbers_child_seq()       L1421
+// fn grandchild_dotted_id()                               L1445
+// fn add_with_status()                                    L1456
+// fn set_status_transitions()                             L1478
+// fn children_are_ordered_by_order_key()                  L1507
+// fn render_show_includes_children_section()              L1575
+// fn add_task()                                           L1615
+// fn between_sits_strictly_between_various_pairs()        L1634
+// fn move_task_before_and_after_reorders()                L1665
+// fn move_task_top_and_bottom()                           L1717
+// fn move_task_rejects_different_parent()                 L1758
+// fn order_key_adjacent_after_sits_between_neighbors()    L1775
 // -------------------------------------------------------------
 
 /// Default seeded statuses. Users can add, rename, or remove these via
@@ -386,6 +386,8 @@ fn view_from_row(row: &rusqlite::Row) -> rusqlite::Result<TaskView> {
 pub struct ListFilters<'a> {
     pub statuses: Option<&'a [&'a str]>,
     pub project_slug: Option<&'a str>,
+    /// Restrict to tasks whose project belongs to this space (by slug).
+    pub space_slug: Option<&'a str>,
     pub cycle_key: Option<&'a str>,
     pub priority: Option<i64>,
     pub limit: Option<i64>,
@@ -415,6 +417,10 @@ pub fn list(conn: &Connection, f: ListFilters) -> Result<Vec<TaskView>> {
     if let Some(slug) = f.project_slug {
         sql.push_str(" AND p.slug = ?");
         args.push(Box::new(slug.to_string()));
+    }
+    if let Some(space) = f.space_slug {
+        sql.push_str(" AND p.space_id = (SELECT id FROM spaces WHERE slug = ?)");
+        args.push(Box::new(space.to_string()));
     }
     if let Some(key) = f.cycle_key {
         sql.push_str(" AND c.key = ?");
@@ -1249,6 +1255,7 @@ mod tests {
                 name: None,
                 path: "projects/kdb",
                 description: None,
+                space_id: None,
             },
         )
         .unwrap();
@@ -1672,6 +1679,7 @@ mod tests {
             ListFilters {
                 statuses: None,
                 project_slug: None,
+                space_slug: None,
                 cycle_key: None,
                 priority: None,
                 limit: None,
@@ -1691,6 +1699,7 @@ mod tests {
             ListFilters {
                 statuses: None,
                 project_slug: None,
+                space_slug: None,
                 cycle_key: None,
                 priority: None,
                 limit: None,
@@ -1718,6 +1727,7 @@ mod tests {
             ListFilters {
                 statuses: None,
                 project_slug: None,
+                space_slug: None,
                 cycle_key: None,
                 priority: None,
                 limit: None,
@@ -1733,6 +1743,7 @@ mod tests {
             ListFilters {
                 statuses: None,
                 project_slug: None,
+                space_slug: None,
                 cycle_key: None,
                 priority: None,
                 limit: None,

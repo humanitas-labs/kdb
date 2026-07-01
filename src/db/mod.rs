@@ -15,11 +15,11 @@ use crate::workspace::root::ROOT_MARKER;
 //
 // pub const DB_FILE                             L26
 // const MIGRATIONS                              L29
-// pub fn db_path()                              L54
-// pub fn open()                                 L59
-// fn migrate()                                  L72
-// mod tests                                     L91
-// fn open_creates_schema_and_is_idempotent()    L96
+// pub fn db_path()                              L55
+// pub fn open()                                 L60
+// fn migrate()                                  L73
+// mod tests                                     L92
+// fn open_creates_schema_and_is_idempotent()    L97
 // -------------------------------------------------
 
 /// Database filename inside `.kdb/`.
@@ -48,6 +48,7 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0006_search_kind",
         include_str!("migrations/0006_search_kind.sql"),
     ),
+    ("0007_spaces", include_str!("migrations/0007_spaces.sql")),
 ];
 
 /// Return the canonical db path for a workspace root.

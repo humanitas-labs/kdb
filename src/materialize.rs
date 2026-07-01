@@ -70,7 +70,7 @@ pub fn materialize_project(
 /// Write materialized files for every non-archived project.
 pub fn materialize_all(conn: &Connection, root: &Path, limit: Option<i64>) -> Result<Vec<PathBuf>> {
     let mut out = Vec::new();
-    for project in projects::list(conn, false)? {
+    for project in projects::list(conn, false, None)? {
         let path = materialize(conn, root, &project, limit)?;
         out.push(path);
     }
@@ -370,6 +370,7 @@ mod tests {
                 name: None,
                 path: "projects/kdb",
                 description: None,
+                space_id: None,
             },
         )
         .unwrap();
@@ -418,6 +419,7 @@ mod tests {
                 name: None,
                 path: "projects/kdb",
                 description: None,
+                space_id: None,
             },
         )
         .unwrap();
@@ -465,6 +467,7 @@ mod tests {
                 name: None,
                 path: "projects/kdb",
                 description: None,
+                space_id: None,
             },
         )
         .unwrap();
@@ -505,6 +508,7 @@ mod tests {
                 name: None,
                 path: "projects/kdb",
                 description: None,
+                space_id: None,
             },
         )
         .unwrap();
