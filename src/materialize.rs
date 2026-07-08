@@ -210,7 +210,7 @@ pub fn materialize_space(conn: &Connection, root: &Path, slug: &str) -> Result<P
     let by_status = group_by_status(&all);
 
     let mut out = String::new();
-    out.push_str(&format!("# {} — Space Board\n\n", space.name));
+    out.push_str(&format!("# {} — Tasks\n\n", space.name));
     out.push_str(GENERATED_NOTE);
     out.push_str("\n\n");
 
@@ -219,7 +219,11 @@ pub fn materialize_space(conn: &Connection, root: &Path, slug: &str) -> Result<P
         let tasks = by_status.get(&status.slug).unwrap_or(&empty);
         let total = tasks.len();
 
-        if status.is_hidden {
+        // The space board is a live-work cockpit: collapse the backlog (and
+        // the already-hidden closed statuses) to a count + command line, so
+        // only the scheduled horizons (in_progress, today, cycle, …) render as
+        // full tables.
+        if status.is_hidden || status.slug == "backlog" {
             out.push_str(&format!("## {} ({})\n\n", status.name, total));
             push_description(&mut out, status);
             out.push_str(&format!(
@@ -631,7 +635,7 @@ mod tests {
                 cycle_id: None,
                 parent_id: None,
                 seq: None,
-                status: None,
+                status: Some("in_progress"),
                 order: None,
             },
         )
@@ -647,7 +651,7 @@ mod tests {
                 cycle_id: None,
                 parent_id: None,
                 seq: None,
-                status: None,
+                status: Some("in_progress"),
                 order: None,
             },
         )
@@ -656,10 +660,10 @@ mod tests {
         let out = materialize_space(&conn, tmp.path(), "acme").unwrap();
         assert!(out.ends_with("acme/.tasks/index.md"));
         let body = std::fs::read_to_string(&out).unwrap();
-        assert!(body.contains("# Acme Labs — Space Board"));
-        // Status-major: one merged Backlog table across both owners, no
+        assert!(body.contains("# Acme Labs — Tasks"));
+        // Status-major: one merged In Progress table across both owners, no
         // per-project section headings.
-        assert!(body.contains("## Backlog (2)"));
+        assert!(body.contains("## In Progress (2)"));
         assert!(!body.contains("## ICE ·"));
         assert!(!body.contains("## ADR ·"));
         assert!(body.contains("| Task | Project | Title | Priority |"));
@@ -669,6 +673,9 @@ mod tests {
         assert!(body.contains("| acme |"));
         assert!(body.contains("[ADR-0001](../clients/globex/.tasks/T-0001.md)"));
         assert!(body.contains("| globex |"));
+        // Backlog is collapsed to a count + command line, not a table.
+        assert!(body.contains("## Backlog (0)"));
+        assert!(body.contains("_`kdb tasks list -S acme -s backlog`_"));
 
         // Both task files actually exist where the links point.
         assert!(tmp.path().join("acme/.tasks/T-0001.md").exists());
