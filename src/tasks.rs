@@ -15,80 +15,82 @@ use serde::Serialize;
 // -------------------------------------------------------------
 // projects/kdb/src/tasks.rs
 //
-// pub const DEFAULT_STATUSES                                L96
-// pub fn is_closed_status()                                L100
-// pub const SEQ_WIDTH                                      L112
-// pub const ORDER_KEY_WIDTH                                L115
-// pub fn format_external_id()                              L120
-// pub fn dotted_top()                                      L125
-// pub fn default_order_key()                               L130
-// pub const CHAIN_CTE                                      L138
-// const ALPHABET                                           L147
-// fn rank()                                                L149
-// pub fn between()                                         L160
-// fn key_before()                                          L172
-// fn key_after()                                           L185
-// fn key_between_two()                                     L200
-// pub struct Task                                          L239
-// pub struct TaskView                                      L266
-//   pub fn external_id()                                   L281
-// pub struct TaskId                                        L292
-//   pub fn parse()                                         L300
-//   pub fn render()                                        L336
-// const SELECT_COLS                                        L346
-// const SELECT_JOINS                                       L352
-// fn view_from_row()                                       L357
-// pub struct ListFilters                                   L386
-// pub fn list()                                            L401
-// pub fn get()                                             L453
-// pub fn get_by_row_id()                                   L485
-// pub struct ChildTask                                     L497
-// pub fn descendants()                                     L509
-// pub fn children()                                        L534
-// pub struct AddArgs                                       L564
-// pub fn add()                                             L584
-// pub struct EditArgs                                      L663
-//   fn is_empty()                                          L672
-// pub fn edit()                                            L692
-// pub enum Side                                            L781
-// pub enum MoveTarget                                      L788
-// pub fn order_key_adjacent()                              L797
-// pub fn move_task()                                       L825
-// fn ensure_same_context()                                 L888
-// enum Direction                                           L907
-// fn neighbor_order()                                      L916
-// pub fn set_status()                                      L957
-// fn subtree_ids()                                         L978
-// pub fn soft_delete()                                     L994
-// pub fn restore()                                        L1013
-// pub fn hard_delete()                                    L1050
-// pub fn get_including_deleted()                          L1065
-// pub struct PurgeFilters                                 L1100
-// pub fn purge()                                          L1110
-// fn status_glyph()                                       L1161
-// pub fn render_list()                                    L1173
-// pub fn render_show()                                    L1196
-// mod tests                                               L1239
-// fn setup()                                              L1246
-// fn parse_task_id_uppercases_alias()                     L1266
-// fn external_id_is_zero_padded()                         L1276
-// fn parse_dotted_task_id_round_trips()                   L1283
-// fn add_auto_seq_then_explicit_seq()                     L1302
-// fn child_does_not_consume_top_level_seq()               L1359
-// fn unparent_allocates_top_level_seq()                   L1375
-// fn reparent_top_level_to_child_clears_seq()             L1398
-// fn reparent_between_parents_renumbers_child_seq()       L1421
-// fn grandchild_dotted_id()                               L1445
-// fn add_with_status()                                    L1456
-// fn set_status_transitions()                             L1478
-// fn children_are_ordered_by_order_key()                  L1507
-// fn render_show_includes_children_section()              L1575
-// fn add_task()                                           L1615
-// fn between_sits_strictly_between_various_pairs()        L1634
-// fn move_task_before_and_after_reorders()                L1665
-// fn move_task_top_and_bottom()                           L1717
-// fn move_task_rejects_different_parent()                 L1758
-// fn order_key_adjacent_after_sits_between_neighbors()    L1775
+// pub const DEFAULT_STATUSES                                L98
+// pub fn is_closed_status()                                L102
+// pub const SEQ_WIDTH                                      L114
+// pub const ORDER_KEY_WIDTH                                L117
+// pub fn format_external_id()                              L122
+// pub fn dotted_top()                                      L127
+// pub fn default_order_key()                               L132
+// pub const CHAIN_CTE                                      L140
+// const ALPHABET                                           L149
+// fn rank()                                                L151
+// pub fn between()                                         L162
+// fn key_before()                                          L174
+// fn key_after()                                           L187
+// fn key_between_two()                                     L202
+// pub struct Task                                          L241
+// pub struct TaskView                                      L272
+//   pub fn external_id()                                   L290
+// pub struct TaskId                                        L301
+//   pub fn parse()                                         L309
+//   pub fn render()                                        L345
+// const SELECT_COLS                                        L355
+// const SELECT_JOINS                                       L362
+// fn view_from_row()                                       L368
+// pub struct ListFilters                                   L398
+// pub fn list()                                            L417
+// pub fn get()                                             L482
+// pub fn get_by_row_id()                                   L516
+// pub struct ChildTask                                     L526
+// pub fn descendants()                                     L538
+// pub fn children()                                        L563
+// pub struct AddArgs                                       L594
+// pub fn add()                                             L616
+// pub struct EditArgs                                      L701
+//   fn is_empty()                                          L710
+// pub fn edit()                                            L730
+// pub enum Side                                            L819
+// pub enum MoveTarget                                      L826
+// pub fn order_key_adjacent()                              L835
+// pub fn move_task()                                       L860
+// fn ensure_same_context()                                 L939
+// enum Direction                                           L958
+// fn neighbor_order()                                      L967
+// pub fn set_status()                                     L1011
+// fn subtree_ids()                                        L1031
+// pub fn soft_delete()                                    L1047
+// pub fn restore()                                        L1065
+// pub fn hard_delete()                                    L1104
+// pub fn get_including_deleted()                          L1119
+// pub struct PurgeFilters                                 L1156
+// pub fn purge()                                          L1166
+// fn status_glyph()                                       L1215
+// pub fn render_list()                                    L1227
+// pub fn render_show()                                    L1282
+// mod tests                                               L1325
+// fn setup()                                              L1332
+// fn parse_task_id_uppercases_alias()                     L1352
+// fn external_id_is_zero_padded()                         L1362
+// fn parse_dotted_task_id_round_trips()                   L1369
+// fn add_auto_seq_then_explicit_seq()                     L1388
+// fn child_does_not_consume_top_level_seq()               L1448
+// fn unparent_allocates_top_level_seq()                   L1464
+// fn reparent_top_level_to_child_clears_seq()             L1487
+// fn reparent_between_parents_renumbers_child_seq()       L1510
+// fn grandchild_dotted_id()                               L1534
+// fn add_with_status()                                    L1545
+// fn set_status_transitions()                             L1568
+// fn children_are_ordered_by_order_key()                  L1598
+// fn render_show_includes_children_section()              L1669
+// fn add_task()                                           L1711
+// fn between_sits_strictly_between_various_pairs()        L1731
+// fn move_task_before_and_after_reorders()                L1762
+// fn move_task_top_and_bottom()                           L1822
+// fn move_task_rejects_different_parent()                 L1865
+// fn space_native_task_uses_space_alias_and_own_seq()     L1882
+// fn task_requires_exactly_one_owner()                    L1948
+// fn order_key_adjacent_after_sits_between_neighbors()    L1986
 // -------------------------------------------------------------
 
 /// Default seeded statuses. Users can add, rename, or remove these via
@@ -238,8 +240,12 @@ fn key_between_two(prev: &str, next: &str) -> String {
 #[derive(Debug, Clone, Serialize)]
 pub struct Task {
     pub id: i64,
-    pub project_id: i64,
-    /// Top-level `seq` within the project. `None` for children
+    /// Owner: a task belongs to exactly one of a project or a space
+    /// (`(project_id, space_id)` is an XOR). Space-native tasks carry
+    /// `space_id` and mint ids off the space alias.
+    pub project_id: Option<i64>,
+    pub space_id: Option<i64>,
+    /// Top-level `seq` within the owner (project or space). `None` for children
     /// (subtasks); they use [`Task::child_seq`] instead.
     pub seq: Option<i64>,
     /// 1-based position among siblings sharing the same `parent_id`.
@@ -266,7 +272,10 @@ pub struct Task {
 pub struct TaskView {
     #[serde(flatten)]
     pub task: Task,
+    /// Owner slug — the project slug, or the space slug for space-native
+    /// tasks. Named `project_*` for historical continuity; reads as "owner".
     pub project_slug: String,
+    /// Owner alias — the project or space alias the external id is minted from.
     pub project_alias: String,
     pub cycle_key: Option<String>,
     /// Dotted id suffix — `"0030"` for top-level, `"0030.1.2"` for a
@@ -343,14 +352,16 @@ impl TaskId {
     }
 }
 
-const SELECT_COLS: &str = "t.id, t.project_id, t.seq, t.child_seq, t.title, t.body, \
+const SELECT_COLS: &str = "t.id, t.project_id, t.space_id, t.seq, t.child_seq, t.title, t.body, \
     t.status, t.priority, \
     COALESCE(t.\"order\", printf('%012d', COALESCE(t.seq, t.child_seq))), \
     t.cycle_id, t.parent_id, t.created_at, t.updated_at, t.closed_at, t.deleted_at, \
-    p.slug, p.alias, c.key, printf('%04d', cr.root_seq) || cr.suffix";
+    COALESCE(p.slug, s.slug), COALESCE(p.alias, s.alias), \
+    c.key, printf('%04d', cr.root_seq) || cr.suffix";
 
 const SELECT_JOINS: &str = "FROM tasks t \
-     JOIN projects p ON p.id = t.project_id \
+     LEFT JOIN projects p ON p.id = t.project_id \
+     LEFT JOIN spaces s ON s.id = t.space_id \
      LEFT JOIN cycles c ON c.id = t.cycle_id \
      JOIN crumbs cr ON cr.id = t.id";
 
@@ -358,26 +369,27 @@ fn view_from_row(row: &rusqlite::Row) -> rusqlite::Result<TaskView> {
     let task = Task {
         id: row.get(0)?,
         project_id: row.get(1)?,
-        seq: row.get(2)?,
-        child_seq: row.get(3)?,
-        title: row.get(4)?,
-        body: row.get(5)?,
-        status: row.get(6)?,
-        priority: row.get(7)?,
-        order: row.get(8)?,
-        cycle_id: row.get(9)?,
-        parent_id: row.get(10)?,
-        created_at: row.get(11)?,
-        updated_at: row.get(12)?,
-        closed_at: row.get(13)?,
-        deleted_at: row.get(14)?,
+        space_id: row.get(2)?,
+        seq: row.get(3)?,
+        child_seq: row.get(4)?,
+        title: row.get(5)?,
+        body: row.get(6)?,
+        status: row.get(7)?,
+        priority: row.get(8)?,
+        order: row.get(9)?,
+        cycle_id: row.get(10)?,
+        parent_id: row.get(11)?,
+        created_at: row.get(12)?,
+        updated_at: row.get(13)?,
+        closed_at: row.get(14)?,
+        deleted_at: row.get(15)?,
     };
     Ok(TaskView {
         task,
-        project_slug: row.get(15)?,
-        project_alias: row.get(16)?,
-        cycle_key: row.get(17)?,
-        dotted: row.get(18)?,
+        project_slug: row.get(16)?,
+        project_alias: row.get(17)?,
+        cycle_key: row.get(18)?,
+        dotted: row.get(19)?,
     })
 }
 
@@ -386,8 +398,12 @@ fn view_from_row(row: &rusqlite::Row) -> rusqlite::Result<TaskView> {
 pub struct ListFilters<'a> {
     pub statuses: Option<&'a [&'a str]>,
     pub project_slug: Option<&'a str>,
-    /// Restrict to tasks whose project belongs to this space (by slug).
+    /// Roll up tasks under this space (by slug): both member-project tasks
+    /// and the space's own space-native tasks.
     pub space_slug: Option<&'a str>,
+    /// Restrict to space-native tasks owned directly by this space (by slug),
+    /// excluding member-project tasks. Used to render the space's own group.
+    pub space_native_slug: Option<&'a str>,
     pub cycle_key: Option<&'a str>,
     pub priority: Option<i64>,
     pub limit: Option<i64>,
@@ -399,9 +415,8 @@ pub struct ListFilters<'a> {
 
 /// List tasks matching the filters, ordered by priority then updated_at desc.
 pub fn list(conn: &Connection, f: ListFilters) -> Result<Vec<TaskView>> {
-    let mut sql = format!(
-        "{CHAIN_CTE} SELECT {SELECT_COLS} {SELECT_JOINS} WHERE t.deleted_at IS NULL"
-    );
+    let mut sql =
+        format!("{CHAIN_CTE} SELECT {SELECT_COLS} {SELECT_JOINS} WHERE t.deleted_at IS NULL");
     let mut args: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
     if let Some(statuses) = f.statuses {
@@ -419,7 +434,17 @@ pub fn list(conn: &Connection, f: ListFilters) -> Result<Vec<TaskView>> {
         args.push(Box::new(slug.to_string()));
     }
     if let Some(space) = f.space_slug {
-        sql.push_str(" AND p.space_id = (SELECT id FROM spaces WHERE slug = ?)");
+        // Roll up both member-project tasks (p.space_id) and the space's own
+        // space-native tasks (t.space_id) under one space slug.
+        sql.push_str(
+            " AND (p.space_id = (SELECT id FROM spaces WHERE slug = ?) \
+                OR t.space_id = (SELECT id FROM spaces WHERE slug = ?))",
+        );
+        args.push(Box::new(space.to_string()));
+        args.push(Box::new(space.to_string()));
+    }
+    if let Some(space) = f.space_native_slug {
+        sql.push_str(" AND t.space_id = (SELECT id FROM spaces WHERE slug = ?)");
         args.push(Box::new(space.to_string()));
     }
     if let Some(key) = f.cycle_key {
@@ -438,7 +463,7 @@ pub fn list(conn: &Connection, f: ListFilters) -> Result<Vec<TaskView>> {
     // `-P all`) keep each project's tasks together instead of interleaving.
     // For a single-project list every row shares `p.slug`, so this is a no-op
     // and the within-project order key still drives the sort.
-    sql.push_str(" ORDER BY p.slug ASC, COALESCE(t.\"order\", printf('%012d', COALESCE(t.seq, t.child_seq))) ASC, t.seq ASC");
+    sql.push_str(" ORDER BY COALESCE(p.slug, s.slug) ASC, COALESCE(t.\"order\", printf('%012d', COALESCE(t.seq, t.child_seq))) ASC, t.seq ASC");
 
     if let Some(limit) = f.limit {
         sql.push_str(" LIMIT ?");
@@ -457,8 +482,10 @@ pub fn list(conn: &Connection, f: ListFilters) -> Result<Vec<TaskView>> {
 pub fn get(conn: &Connection, id: &TaskId) -> Result<Option<TaskView>> {
     let mut row_id: i64 = match conn
         .query_row(
-            "SELECT t.id FROM tasks t JOIN projects p ON p.id = t.project_id \
-             WHERE p.alias = ? AND t.seq = ?",
+            "SELECT t.id FROM tasks t \
+             LEFT JOIN projects p ON p.id = t.project_id \
+             LEFT JOIN spaces s ON s.id = t.space_id \
+             WHERE COALESCE(p.alias, s.alias) = ? AND t.seq = ?",
             params![id.alias, id.seq],
             |row| row.get(0),
         )
@@ -487,9 +514,7 @@ pub fn get(conn: &Connection, id: &TaskId) -> Result<Option<TaskView>> {
 
 /// Look up a task by its primary key with full join + dotted id.
 pub fn get_by_row_id(conn: &Connection, row_id: i64) -> Result<Option<TaskView>> {
-    let sql = format!(
-        "{CHAIN_CTE} SELECT {SELECT_COLS} {SELECT_JOINS} WHERE t.id = ?"
-    );
+    let sql = format!("{CHAIN_CTE} SELECT {SELECT_COLS} {SELECT_JOINS} WHERE t.id = ?");
     let mut stmt = conn.prepare(&sql)?;
     stmt.query_row(params![row_id], view_from_row)
         .optional()
@@ -538,11 +563,12 @@ pub fn descendants(conn: &Connection, root_task_id: i64) -> Result<Vec<TaskView>
 pub fn children(conn: &Connection, parent_task_id: i64) -> Result<Vec<ChildTask>> {
     let sql = format!(
         "{CHAIN_CTE} \
-         SELECT p.alias, printf('%04d', cr.root_seq) || cr.suffix AS dotted, \
+         SELECT COALESCE(p.alias, s.alias) AS alias, printf('%04d', cr.root_seq) || cr.suffix AS dotted, \
                 t.status, t.priority, t.title, \
                 COALESCE(t.\"order\", printf('%012d', t.child_seq)) AS task_order \
          FROM tasks t \
-         JOIN projects p ON p.id = t.project_id \
+         LEFT JOIN projects p ON p.id = t.project_id \
+         LEFT JOIN spaces s ON s.id = t.space_id \
          JOIN crumbs cr ON cr.id = t.id \
          WHERE t.parent_id = ? AND t.deleted_at IS NULL \
          ORDER BY task_order ASC, t.child_seq ASC"
@@ -566,14 +592,16 @@ pub fn children(conn: &Connection, parent_task_id: i64) -> Result<Vec<ChildTask>
 }
 
 pub struct AddArgs<'a> {
-    pub project_id: i64,
+    /// Owner: exactly one of `project_id` / `space_id` must be set (XOR).
+    pub project_id: Option<i64>,
+    pub space_id: Option<i64>,
     pub title: &'a str,
     pub body: Option<&'a str>,
     pub priority: Option<i64>,
     pub cycle_id: Option<i64>,
     pub parent_id: Option<i64>,
     /// Explicit seq for migrations/imports. When `None`, auto-assigned
-    /// as `max(seq) + 1` within the project.
+    /// as `max(seq) + 1` within the owner.
     pub seq: Option<i64>,
     /// Explicit status (defaults to `open`).
     pub status: Option<&'a str>,
@@ -582,10 +610,13 @@ pub struct AddArgs<'a> {
 }
 
 /// Insert a new task. Top-level tasks (no `parent_id`) auto-assign
-/// `seq` as `MAX(seq) + 1` within the project; children auto-assign
-/// `child_seq` as `MAX(child_seq) + 1` among siblings of the same
-/// parent. Both happen inside a single transaction.
+/// `seq` as `MAX(seq) + 1` within the owner (project or space); children
+/// auto-assign `child_seq` as `MAX(child_seq) + 1` among siblings of the
+/// same parent. Both happen inside a single transaction.
 pub fn add(conn: &mut Connection, args: AddArgs) -> Result<TaskView> {
+    if args.project_id.is_some() == args.space_id.is_some() {
+        bail!("a task must have exactly one owner (a project or a space)");
+    }
     let priority = args.priority.unwrap_or(3);
     if !(1..=5).contains(&priority) {
         bail!("priority must be between 1 and 5");
@@ -604,11 +635,13 @@ pub fn add(conn: &mut Connection, args: AddArgs) -> Result<TaskView> {
                     }
                     s
                 }
+                // `IS` matches NULL, so scoping on both owner columns picks
+                // out exactly the one that is set for this task.
                 None => tx
                     .query_row(
                         "SELECT COALESCE(MAX(seq), 0) + 1 FROM tasks \
-                         WHERE project_id = ? AND parent_id IS NULL",
-                        [args.project_id],
+                         WHERE project_id IS ? AND space_id IS ? AND parent_id IS NULL",
+                        params![args.project_id, args.space_id],
                         |row| row.get(0),
                     )
                     .context("failed to compute next seq")?,
@@ -636,13 +669,14 @@ pub fn add(conn: &mut Connection, args: AddArgs) -> Result<TaskView> {
         .unwrap_or_else(|| default_order_key(order_seed));
     tx.execute(
         "INSERT INTO tasks \
-         (project_id, seq, child_seq, title, body, status, priority, \"order\", cycle_id, parent_id, closed_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
+         (project_id, space_id, seq, child_seq, title, body, status, priority, \"order\", cycle_id, parent_id, closed_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
                  CASE WHEN ? = 1 \
                        THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') \
                        ELSE NULL END)",
         params![
             args.project_id,
+            args.space_id,
             seq,
             child_seq,
             args.title,
@@ -697,8 +731,7 @@ pub fn edit(conn: &mut Connection, id: &TaskId, args: EditArgs) -> Result<TaskVi
     if args.is_empty() {
         bail!("no fields to update");
     }
-    let existing = get(conn, id)?
-        .with_context(|| format!("task not found: {}", id.render()))?;
+    let existing = get(conn, id)?.with_context(|| format!("task not found: {}", id.render()))?;
     if let Some(pri) = args.priority {
         if !(1..=5).contains(&pri) {
             bail!("priority must be between 1 and 5");
@@ -706,7 +739,8 @@ pub fn edit(conn: &mut Connection, id: &TaskId, args: EditArgs) -> Result<TaskVi
     }
 
     let row_id = existing.task.id;
-    let project_id = existing.task.project_id;
+    let owner_project = existing.task.project_id;
+    let owner_space = existing.task.space_id;
     let tx = conn.transaction()?;
 
     // Handle parent transitions first so seq/child_seq/order are
@@ -736,8 +770,8 @@ pub fn edit(conn: &mut Connection, id: &TaskId, args: EditArgs) -> Result<TaskVi
                 let s: i64 = tx
                     .query_row(
                         "SELECT COALESCE(MAX(seq), 0) + 1 FROM tasks \
-                         WHERE project_id = ? AND parent_id IS NULL",
-                        [project_id],
+                         WHERE project_id IS ? AND space_id IS ? AND parent_id IS NULL",
+                        params![owner_project, owner_space],
                         |r| r.get(0),
                     )
                     .context("failed to compute next seq")?;
@@ -798,11 +832,7 @@ pub enum MoveTarget<'a> {
 
 /// Compute an order key for a new task inserted adjacent to `sibling` on the given side,
 /// within `sibling`'s `(project_id, parent_id)` context.
-pub fn order_key_adjacent(
-    conn: &Connection,
-    sibling: &TaskView,
-    side: Side,
-) -> Result<String> {
+pub fn order_key_adjacent(conn: &Connection, sibling: &TaskView, side: Side) -> Result<String> {
     let dir = match side {
         Side::Before => Direction::Prev,
         Side::After => Direction::Next,
@@ -810,6 +840,7 @@ pub fn order_key_adjacent(
     let neighbor = neighbor_order(
         conn,
         sibling.task.project_id,
+        sibling.task.space_id,
         sibling.task.parent_id,
         Some(&sibling.task.order),
         dir,
@@ -827,24 +858,39 @@ pub fn order_key_adjacent(
 /// Move a task to a new position within its `(project_id, parent_id)` context.
 /// `Before`/`After` require the sibling to be in the same context; otherwise errors.
 pub fn move_task(conn: &Connection, id: &TaskId, target: MoveTarget) -> Result<TaskView> {
-    let task = get(conn, id)?
-        .with_context(|| format!("task not found: {}", id.render()))?;
+    let task = get(conn, id)?.with_context(|| format!("task not found: {}", id.render()))?;
     let project_id = task.task.project_id;
+    let space_id = task.task.space_id;
     let parent_id = task.task.parent_id;
 
     let new_order = match target {
         MoveTarget::Top => {
-            let first = neighbor_order(conn, project_id, parent_id, None, Direction::First, task.task.id)?;
+            let first = neighbor_order(
+                conn,
+                project_id,
+                space_id,
+                parent_id,
+                None,
+                Direction::First,
+                task.task.id,
+            )?;
             between(None, first.as_deref())
         }
         MoveTarget::Bottom => {
-            let last = neighbor_order(conn, project_id, parent_id, None, Direction::Last, task.task.id)?;
+            let last = neighbor_order(
+                conn,
+                project_id,
+                space_id,
+                parent_id,
+                None,
+                Direction::Last,
+                task.task.id,
+            )?;
             between(last.as_deref(), None)
         }
         MoveTarget::Before(sib_id) => {
-            let sib = get(conn, sib_id)?.with_context(|| {
-                format!("sibling not found: {}", sib_id.render())
-            })?;
+            let sib = get(conn, sib_id)?
+                .with_context(|| format!("sibling not found: {}", sib_id.render()))?;
             ensure_same_context(&task, &sib)?;
             if sib.task.id == task.task.id {
                 return Ok(task);
@@ -852,6 +898,7 @@ pub fn move_task(conn: &Connection, id: &TaskId, target: MoveTarget) -> Result<T
             let prev = neighbor_order(
                 conn,
                 project_id,
+                space_id,
                 parent_id,
                 Some(&sib.task.order),
                 Direction::Prev,
@@ -860,9 +907,8 @@ pub fn move_task(conn: &Connection, id: &TaskId, target: MoveTarget) -> Result<T
             between(prev.as_deref(), Some(&sib.task.order))
         }
         MoveTarget::After(sib_id) => {
-            let sib = get(conn, sib_id)?.with_context(|| {
-                format!("sibling not found: {}", sib_id.render())
-            })?;
+            let sib = get(conn, sib_id)?
+                .with_context(|| format!("sibling not found: {}", sib_id.render()))?;
             ensure_same_context(&task, &sib)?;
             if sib.task.id == task.task.id {
                 return Ok(task);
@@ -870,6 +916,7 @@ pub fn move_task(conn: &Connection, id: &TaskId, target: MoveTarget) -> Result<T
             let next = neighbor_order(
                 conn,
                 project_id,
+                space_id,
                 parent_id,
                 Some(&sib.task.order),
                 Direction::Next,
@@ -890,9 +937,9 @@ pub fn move_task(conn: &Connection, id: &TaskId, target: MoveTarget) -> Result<T
 }
 
 fn ensure_same_context(task: &TaskView, sib: &TaskView) -> Result<()> {
-    if task.task.project_id != sib.task.project_id {
+    if task.task.project_id != sib.task.project_id || task.task.space_id != sib.task.space_id {
         bail!(
-            "cannot move {}: target {} is in a different project",
+            "cannot move {}: target {} has a different owner",
             task.external_id(),
             sib.external_id()
         );
@@ -919,7 +966,8 @@ enum Direction {
 /// `exclude_id` is always filtered out so moving a task past its own current slot works.
 fn neighbor_order(
     conn: &Connection,
-    project_id: i64,
+    project_id: Option<i64>,
+    space_id: Option<i64>,
     parent_id: Option<i64>,
     pivot: Option<&str>,
     dir: Direction,
@@ -935,14 +983,16 @@ fn neighbor_order(
         Direction::Prev => ("AND \"order\" < ?", "DESC"),
         Direction::Next => ("AND \"order\" > ?", "ASC"),
     };
+    // `IS` matches NULL, so the owner is scoped by whichever column is set.
     let sql = format!(
         "SELECT \"order\" FROM tasks \
-         WHERE project_id = ? AND {parent_pred} AND id != ? {cmp} \
+         WHERE project_id IS ? AND space_id IS ? AND {parent_pred} AND id != ? {cmp} \
          ORDER BY \"order\" {order} LIMIT 1"
     );
     let mut stmt = conn.prepare(&sql)?;
     let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
     params_vec.push(Box::new(project_id));
+    params_vec.push(Box::new(space_id));
     if let Some(pid) = parent_id {
         params_vec.push(Box::new(pid));
     }
@@ -960,8 +1010,7 @@ fn neighbor_order(
 /// statuses clear it.
 pub fn set_status(conn: &Connection, id: &TaskId, status: &str) -> Result<TaskView> {
     let closed = is_closed_status(conn, status)?;
-    let existing = get(conn, id)?
-        .with_context(|| format!("task not found: {}", id.render()))?;
+    let existing = get(conn, id)?.with_context(|| format!("task not found: {}", id.render()))?;
 
     conn.execute(
         "UPDATE tasks SET \
@@ -996,8 +1045,7 @@ fn subtree_ids(conn: &Connection, root_task_id: i64) -> Result<Vec<i64>> {
 /// on every descendant. Idempotent — already-deleted rows keep their
 /// existing timestamp.
 pub fn soft_delete(conn: &mut Connection, id: &TaskId) -> Result<TaskView> {
-    let existing = get(conn, id)?
-        .with_context(|| format!("task not found: {}", id.render()))?;
+    let existing = get(conn, id)?.with_context(|| format!("task not found: {}", id.render()))?;
     let ids = subtree_ids(conn, existing.task.id)?;
     let tx = conn.transaction()?;
     let placeholders = vec!["?"; ids.len()].join(",");
@@ -1018,8 +1066,10 @@ pub fn restore(conn: &mut Connection, id: &TaskId) -> Result<TaskView> {
     let row_id: i64 = {
         let mut row_id: i64 = conn
             .query_row(
-                "SELECT t.id FROM tasks t JOIN projects p ON p.id = t.project_id \
-                 WHERE p.alias = ? AND t.seq = ?",
+                "SELECT t.id FROM tasks t \
+                 LEFT JOIN projects p ON p.id = t.project_id \
+                 LEFT JOIN spaces s ON s.id = t.space_id \
+                 WHERE COALESCE(p.alias, s.alias) = ? AND t.seq = ?",
                 params![id.alias, id.seq],
                 |r| r.get(0),
             )
@@ -1069,8 +1119,10 @@ pub fn hard_delete(conn: &mut Connection, id: &TaskId) -> Result<()> {
 pub fn get_including_deleted(conn: &Connection, id: &TaskId) -> Result<Option<TaskView>> {
     let mut row_id: i64 = match conn
         .query_row(
-            "SELECT t.id FROM tasks t JOIN projects p ON p.id = t.project_id \
-             WHERE p.alias = ? AND t.seq = ?",
+            "SELECT t.id FROM tasks t \
+             LEFT JOIN projects p ON p.id = t.project_id \
+             LEFT JOIN spaces s ON s.id = t.space_id \
+             WHERE COALESCE(p.alias, s.alias) = ? AND t.seq = ?",
             params![id.alias, id.seq],
             |r| r.get(0),
         )
@@ -1118,9 +1170,7 @@ pub fn purge(conn: &mut Connection, f: PurgeFilters) -> Result<Vec<TaskView>> {
 
     // Build the match query. Always at top level of the subtree —
     // a matching subtask drags only its own subtree.
-    let mut sql = format!(
-        "{CHAIN_CTE} SELECT {SELECT_COLS} {SELECT_JOINS} WHERE 1=1"
-    );
+    let mut sql = format!("{CHAIN_CTE} SELECT {SELECT_COLS} {SELECT_JOINS} WHERE 1=1");
     let mut args: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
     if let Some(slug) = f.project_slug {
         sql.push_str(" AND p.slug = ?");
@@ -1198,7 +1248,10 @@ pub fn render_list(tasks: &[TaskView]) -> String {
             .max()
             .unwrap_or(7)
             .max(7);
-        out.push_str(&format!("{:<id_w$}  {:<proj_w$}  st    p  title\n", "id", "project"));
+        out.push_str(&format!(
+            "{:<id_w$}  {:<proj_w$}  st    p  title\n",
+            "id", "project"
+        ));
         for (t, id) in tasks.iter().zip(id_strs.iter()) {
             out.push_str(&format!(
                 "{:<id_w$}  {:<proj_w$}  {}  {}  {}\n",
@@ -1337,7 +1390,8 @@ mod tests {
         let a = add(
             &mut conn,
             AddArgs {
-                project_id: pid,
+                project_id: Some(pid),
+                space_id: None,
                 title: "first",
                 body: None,
                 priority: None,
@@ -1355,7 +1409,8 @@ mod tests {
         let b = add(
             &mut conn,
             AddArgs {
-                project_id: pid,
+                project_id: Some(pid),
+                space_id: None,
                 title: "explicit",
                 body: Some("body text"),
                 priority: Some(2),
@@ -1373,7 +1428,8 @@ mod tests {
         let c = add(
             &mut conn,
             AddArgs {
-                project_id: pid,
+                project_id: Some(pid),
+                space_id: None,
                 title: "after explicit",
                 body: None,
                 priority: None,
@@ -1491,7 +1547,8 @@ mod tests {
         let t = add(
             &mut conn,
             AddArgs {
-                project_id: pid,
+                project_id: Some(pid),
+                space_id: None,
                 title: "done one",
                 body: None,
                 priority: None,
@@ -1513,7 +1570,8 @@ mod tests {
         let t = add(
             &mut conn,
             AddArgs {
-                project_id: pid,
+                project_id: Some(pid),
+                space_id: None,
                 title: "first",
                 body: None,
                 priority: None,
@@ -1542,7 +1600,8 @@ mod tests {
         let parent = add(
             &mut conn,
             AddArgs {
-                project_id: pid,
+                project_id: Some(pid),
+                space_id: None,
                 title: "parent",
                 body: None,
                 priority: None,
@@ -1557,7 +1616,8 @@ mod tests {
         let child_a = add(
             &mut conn,
             AddArgs {
-                project_id: pid,
+                project_id: Some(pid),
+                space_id: None,
                 title: "child a",
                 body: None,
                 priority: Some(2),
@@ -1572,7 +1632,8 @@ mod tests {
         let child_b = add(
             &mut conn,
             AddArgs {
-                project_id: pid,
+                project_id: Some(pid),
+                space_id: None,
                 title: "child b",
                 body: None,
                 priority: Some(1),
@@ -1610,7 +1671,8 @@ mod tests {
         let parent = add(
             &mut conn,
             AddArgs {
-                project_id: pid,
+                project_id: Some(pid),
+                space_id: None,
                 title: "parent",
                 body: Some("details"),
                 priority: Some(2),
@@ -1625,7 +1687,8 @@ mod tests {
         let _child = add(
             &mut conn,
             AddArgs {
-                project_id: pid,
+                project_id: Some(pid),
+                space_id: None,
                 title: "child",
                 body: None,
                 priority: Some(1),
@@ -1649,7 +1712,8 @@ mod tests {
         add(
             conn,
             AddArgs {
-                project_id: pid,
+                project_id: Some(pid),
+                space_id: None,
                 title,
                 body: None,
                 priority: None,
@@ -1713,6 +1777,7 @@ mod tests {
                 statuses: None,
                 project_slug: None,
                 space_slug: None,
+                space_native_slug: None,
                 cycle_key: None,
                 priority: None,
                 limit: None,
@@ -1721,7 +1786,10 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            listed.iter().map(|t| t.task.title.as_str()).collect::<Vec<_>>(),
+            listed
+                .iter()
+                .map(|t| t.task.title.as_str())
+                .collect::<Vec<_>>(),
             vec!["c", "a", "b"],
         );
 
@@ -1733,6 +1801,7 @@ mod tests {
                 statuses: None,
                 project_slug: None,
                 space_slug: None,
+                space_native_slug: None,
                 cycle_key: None,
                 priority: None,
                 limit: None,
@@ -1741,7 +1810,10 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            listed.iter().map(|t| t.task.title.as_str()).collect::<Vec<_>>(),
+            listed
+                .iter()
+                .map(|t| t.task.title.as_str())
+                .collect::<Vec<_>>(),
             vec!["c", "b", "a"],
         );
     }
@@ -1761,6 +1833,7 @@ mod tests {
                 statuses: None,
                 project_slug: None,
                 space_slug: None,
+                space_native_slug: None,
                 cycle_key: None,
                 priority: None,
                 limit: None,
@@ -1777,6 +1850,7 @@ mod tests {
                 statuses: None,
                 project_slug: None,
                 space_slug: None,
+                space_native_slug: None,
                 cycle_key: None,
                 priority: None,
                 limit: None,
@@ -1805,16 +1879,132 @@ mod tests {
     }
 
     #[test]
+    fn space_native_task_uses_space_alias_and_own_seq() {
+        use crate::spaces::{self, AddArgs as SpaceAddArgs};
+        let (_tmp, mut conn, pid) = setup();
+        // A project task takes KDB-0001.
+        let p = add_task(&mut conn, pid, "proj task", None);
+        assert_eq!(p.external_id(), "KDB-0001");
+
+        let space = spaces::add(
+            &conn,
+            SpaceAddArgs {
+                slug: "acme",
+                name: Some("Acme"),
+                alias: "ICE",
+                path: Some("acme"),
+                description: None,
+            },
+        )
+        .unwrap();
+
+        // Space-native tasks mint ids off the space alias with their own seq.
+        let a = add(
+            &mut conn,
+            AddArgs {
+                project_id: None,
+                space_id: Some(space.id),
+                title: "space task a",
+                body: None,
+                priority: None,
+                cycle_id: None,
+                parent_id: None,
+                seq: None,
+                status: None,
+                order: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(a.task.project_id, None);
+        assert_eq!(a.task.space_id, Some(space.id));
+        assert_eq!(a.external_id(), "ICE-0001");
+        assert_eq!(a.project_slug, "acme");
+
+        let b = add(
+            &mut conn,
+            AddArgs {
+                project_id: None,
+                space_id: Some(space.id),
+                title: "space task b",
+                body: None,
+                priority: None,
+                cycle_id: None,
+                parent_id: None,
+                seq: None,
+                status: None,
+                order: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(b.external_id(), "ICE-0002");
+
+        // Resolving the space-native external id round-trips.
+        let id = TaskId::parse("ICE-0001").unwrap();
+        let got = get(&conn, &id).unwrap().unwrap();
+        assert_eq!(got.task.id, a.task.id);
+    }
+
+    #[test]
+    fn task_requires_exactly_one_owner() {
+        let (_tmp, mut conn, pid) = setup();
+        let both = add(
+            &mut conn,
+            AddArgs {
+                project_id: Some(pid),
+                space_id: Some(1),
+                title: "two owners",
+                body: None,
+                priority: None,
+                cycle_id: None,
+                parent_id: None,
+                seq: None,
+                status: None,
+                order: None,
+            },
+        );
+        assert!(both.is_err());
+
+        let neither = add(
+            &mut conn,
+            AddArgs {
+                project_id: None,
+                space_id: None,
+                title: "no owner",
+                body: None,
+                priority: None,
+                cycle_id: None,
+                parent_id: None,
+                seq: None,
+                status: None,
+                order: None,
+            },
+        );
+        assert!(neither.is_err());
+    }
+
+    #[test]
     fn order_key_adjacent_after_sits_between_neighbors() {
         let (_tmp, mut conn, pid) = setup();
         let a = add_task(&mut conn, pid, "a", None);
         let b = add_task(&mut conn, pid, "b", None);
 
         let key_after_a = order_key_adjacent(&conn, &a, Side::After).unwrap();
-        assert!(key_after_a > a.task.order, "{key_after_a} > {}", a.task.order);
-        assert!(key_after_a < b.task.order, "{key_after_a} < {}", b.task.order);
+        assert!(
+            key_after_a > a.task.order,
+            "{key_after_a} > {}",
+            a.task.order
+        );
+        assert!(
+            key_after_a < b.task.order,
+            "{key_after_a} < {}",
+            b.task.order
+        );
 
         let key_before_a = order_key_adjacent(&conn, &a, Side::Before).unwrap();
-        assert!(key_before_a < a.task.order, "{key_before_a} < {}", a.task.order);
+        assert!(
+            key_before_a < a.task.order,
+            "{key_before_a} < {}",
+            a.task.order
+        );
     }
 }

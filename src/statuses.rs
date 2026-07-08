@@ -30,17 +30,17 @@ use crate::color;
 // pub struct EditArgs                         L194
 //   fn is_empty()                             L204
 // pub fn edit()                               L215
-// pub fn remove()                             L257
-// fn validate_color()                         L283
-// pub fn render_list()                        L291
-// pub fn render_show()                        L330
-// mod tests                                   L351
-// fn setup()                                  L357
-// fn default_task_statuses_are_seeded()       L365
-// fn default_project_statuses_are_seeded()    L377
-// fn add_edit_remove_roundtrip()              L387
-// fn remove_blocks_if_in_use()                L430
-// fn add_rejects_bad_color()                  L466
+// pub fn remove()                             L256
+// fn validate_color()                         L282
+// pub fn render_list()                        L290
+// pub fn render_show()                        L329
+// mod tests                                   L353
+// fn setup()                                  L359
+// fn default_task_statuses_are_seeded()       L367
+// fn default_project_statuses_are_seeded()    L382
+// fn add_edit_remove_roundtrip()              L392
+// fn remove_blocks_if_in_use()                L435
+// fn add_rejects_bad_color()                  L473
 // ------------------------------------------------
 
 /// Whether a status applies to the `projects` or `tasks` table.
@@ -249,8 +249,7 @@ pub fn edit(conn: &Connection, kind: Kind, slug: &str, args: EditArgs) -> Result
         ],
     )
     .with_context(|| format!("failed to update {} {slug}", kind.table()))?;
-    get(conn, kind, slug)?
-        .with_context(|| format!("{} {slug} missing after update", kind.table()))
+    get(conn, kind, slug)?.with_context(|| format!("{} {slug} missing after update", kind.table()))
 }
 
 /// Delete a status. Fails if any row in the owning table still references it.
@@ -336,7 +335,10 @@ pub fn render_show(s: &Status, kind: Kind) -> String {
         format!("{}:", kind.flag_label()),
         if s.flag { "yes" } else { "no" }
     ));
-    out.push_str(&format!("hidden:      {}\n", if s.is_hidden { "yes" } else { "no" }));
+    out.push_str(&format!(
+        "hidden:      {}\n",
+        if s.is_hidden { "yes" } else { "no" }
+    ));
     out.push_str(&format!("sort_order:  {}\n", s.sort_order));
     if let Some(c) = &s.color {
         out.push_str(&format!("color:       {c}\n"));
@@ -366,7 +368,10 @@ mod tests {
         let (_tmp, conn) = setup();
         let all = list(&conn, Kind::Task).unwrap();
         let slugs: Vec<&str> = all.iter().map(|s| s.slug.as_str()).collect();
-        assert_eq!(slugs, vec!["backlog", "cycle", "in_progress", "parked", "done"]);
+        assert_eq!(
+            slugs,
+            vec!["backlog", "cycle", "in_progress", "parked", "done"]
+        );
         let done = all.iter().find(|s| s.slug == "done").unwrap();
         assert!(done.flag, "done should have is_closed=true");
         let parked = all.iter().find(|s| s.slug == "parked").unwrap();
@@ -446,7 +451,8 @@ mod tests {
         crate::tasks::add(
             &mut conn,
             crate::tasks::AddArgs {
-                project_id: p.id,
+                project_id: Some(p.id),
+                space_id: None,
                 title: "t",
                 body: None,
                 priority: None,

@@ -20,18 +20,18 @@ use crate::tasks::{self, AddArgs};
 // pub struct SkipReason             L51
 // struct ParsedFile                 L56
 // pub fn import_dir()               L65
-// fn parse_task_file()             L143
-// fn split_frontmatter()           L173
-// fn parse_frontmatter()           L194
-// fn unquote_scalar()              L228
-// fn parse_seq()                   L242
-// fn map_status()                  L252
-// fn map_priority()                L262
-// fn strip_leading_heading()       L278
-// mod tests                        L293
-// fn parses_basic_frontmatter()    L297
-// fn maps_priorities()             L308
-// fn maps_statuses()               L316
+// fn parse_task_file()             L140
+// fn split_frontmatter()           L163
+// fn parse_frontmatter()           L186
+// fn unquote_scalar()              L220
+// fn parse_seq()                   L234
+// fn map_status()                  L248
+// fn map_priority()                L258
+// fn strip_leading_heading()       L274
+// mod tests                        L289
+// fn parses_basic_frontmatter()    L293
+// fn maps_priorities()             L304
+// fn maps_statuses()               L312
 // -------------------------------------
 
 /// Result of an import run.
@@ -62,11 +62,7 @@ struct ParsedFile {
 }
 
 /// Import every `T-*.md` file from `dir` into `project`.
-pub fn import_dir(
-    conn: &mut Connection,
-    project: &Project,
-    dir: &Path,
-) -> Result<ImportReport> {
+pub fn import_dir(conn: &mut Connection, project: &Project, dir: &Path) -> Result<ImportReport> {
     let mut report = ImportReport::default();
     if !dir.exists() {
         bail!("source directory does not exist: {}", dir.display());
@@ -115,7 +111,8 @@ pub fn import_dir(
         let result = tasks::add(
             conn,
             AddArgs {
-                project_id: project.id,
+                project_id: Some(project.id),
+                space_id: None,
                 title: &parsed.title,
                 body,
                 priority: Some(parsed.priority),
@@ -144,20 +141,13 @@ fn parse_task_file(contents: &str) -> Result<ParsedFile> {
     let (fm, body) = split_frontmatter(contents)?;
     let fm = parse_frontmatter(fm)?;
 
-    let id = fm
-        .get("id")
-        .context("missing `id` in frontmatter")?
-        .clone();
-    let seq = parse_seq(&id)
-        .with_context(|| format!("unable to parse seq from id '{id}'"))?;
+    let id = fm.get("id").context("missing `id` in frontmatter")?.clone();
+    let seq = parse_seq(&id).with_context(|| format!("unable to parse seq from id '{id}'"))?;
 
     let title = fm.get("title").context("missing `title`")?.clone();
     let status_raw = fm.get("status").map(String::as_str).unwrap_or("planned");
     let status = map_status(status_raw);
-    let priority_raw = fm
-        .get("priority")
-        .map(String::as_str)
-        .unwrap_or("medium");
+    let priority_raw = fm.get("priority").map(String::as_str).unwrap_or("medium");
     let priority = map_priority(priority_raw);
 
     let body = strip_leading_heading(body, &title);
@@ -172,7 +162,9 @@ fn parse_task_file(contents: &str) -> Result<ParsedFile> {
 
 fn split_frontmatter(s: &str) -> Result<(&str, &str)> {
     let s = s.strip_prefix('\u{feff}').unwrap_or(s);
-    let rest = s.strip_prefix("---\n").or_else(|| s.strip_prefix("---\r\n"))
+    let rest = s
+        .strip_prefix("---\n")
+        .or_else(|| s.strip_prefix("---\r\n"))
         .context("file does not start with `---`")?;
     let end = rest
         .find("\n---\n")
@@ -240,7 +232,11 @@ fn unquote_scalar(s: &str) -> String {
 
 /// Extract the numeric tail of an id like "T-0100" or "T-100" → 100.
 fn parse_seq(id: &str) -> Result<i64> {
-    let tail: String = id.chars().rev().take_while(|c| c.is_ascii_digit()).collect();
+    let tail: String = id
+        .chars()
+        .rev()
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
     if tail.is_empty() {
         bail!("no trailing digits in id '{id}'");
     }

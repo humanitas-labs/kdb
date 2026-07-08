@@ -12,6 +12,9 @@ Local issue tracker for this kdb repo. Sorted by (status, priority).
 | --- | --- | --- | --- |
 | [0065 — Codemap Index (colocated maps + derived index)](iss-0065-codemap-index.md) | feat | done | high |
 | [0066 — `kdb check` scoping (index build ignores subtree scope)](iss-0066-check-scoping.md) | perf | proposed | medium |
+| [0067 — `tasks move --top` panics on all-min order key](iss-0067-move-top-panic.md) | bug | proposed | medium |
+| [0069 — Spaces as task-bearing containers (space-native tasks + alias)](iss-0069-space-owned-tasks.md) | feat | done | medium |
+| [0068 — `render --space` space-level task rollup](iss-0068-render-space-rollup.md) | feat | superseded | medium |
 | [0064 — Full-Text Search (`kdb search <query>`)](iss-0064-fulltext-search.md) | feat | in_progress | medium |
 | [0063 — Relational Layer (projects, cycles, tasks, labels)](iss-0063-relational-layer.md) | feat | in_progress | high |
 | [0060 — Transclusion Includes & kdb render](iss-0060-transclusion-and-render.md) | enhancement | done | high |

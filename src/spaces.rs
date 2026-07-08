@@ -18,22 +18,22 @@ use serde::Serialize;
 // projects/kdb/src/spaces.rs
 //
 // pub struct Space                           L40
-//   fn from_row()                            L54
-// const SELECT_COLS                          L69
-// pub fn list()                              L76
-// pub fn get_by_slug()                       L93
-// pub struct AddArgs                        L101
-// pub fn add()                              L109
-// pub struct EditArgs                       L121
-//   fn is_empty()                           L129
-// pub fn edit()                             L138
-// pub fn render_list()                      L160
-// pub fn render_show()                      L192
-// mod tests                                 L208
-// fn setup()                                L215
-// fn add_then_list_and_show()               L223
-// fn project_count_reflects_membership()    L243
-// fn detach_sets_space_null()               L278
+//   fn from_row()                            L57
+// const SELECT_COLS                          L73
+// pub fn list()                              L80
+// pub fn get_by_slug()                       L97
+// pub struct AddArgs                        L105
+// pub fn add()                              L118
+// pub struct EditArgs                       L131
+//   fn is_empty()                           L140
+// pub fn edit()                             L150
+// pub fn render_list()                      L181
+// pub fn render_show()                      L230
+// mod tests                                 L253
+// fn setup()                                L260
+// fn add_then_list_and_show()               L268
+// fn project_count_reflects_membership()    L290
+// fn detach_sets_space_null()               L326
 // ----------------------------------------------
 
 #[derive(Debug, Clone, Serialize)]
@@ -41,6 +41,9 @@ pub struct Space {
     pub id: i64,
     pub slug: String,
     pub name: String,
+    /// Uppercase alias used in task ids for space-native tasks (e.g. `ICE`).
+    /// `None` until the space owns tasks. Unique across projects and spaces.
+    pub alias: Option<String>,
     pub path: Option<String>,
     pub status: String,
     pub description: Option<String>,
@@ -56,17 +59,18 @@ impl Space {
             id: row.get(0)?,
             slug: row.get(1)?,
             name: row.get(2)?,
-            path: row.get(3)?,
-            status: row.get(4)?,
-            description: row.get(5)?,
-            project_count: row.get(6)?,
-            created_at: row.get(7)?,
-            updated_at: row.get(8)?,
+            alias: row.get(3)?,
+            path: row.get(4)?,
+            status: row.get(5)?,
+            description: row.get(6)?,
+            project_count: row.get(7)?,
+            created_at: row.get(8)?,
+            updated_at: row.get(9)?,
         })
     }
 }
 
-const SELECT_COLS: &str = "s.id, s.slug, s.name, s.path, s.status, s.description, \
+const SELECT_COLS: &str = "s.id, s.slug, s.name, s.alias, s.path, s.status, s.description, \
      (SELECT COUNT(*) FROM projects p WHERE p.space_id = s.id), \
      s.created_at, s.updated_at";
 
@@ -101,16 +105,22 @@ pub fn get_by_slug(conn: &Connection, slug: &str) -> Result<Option<Space>> {
 pub struct AddArgs<'a> {
     pub slug: &'a str,
     pub name: Option<&'a str>,
+    /// Uppercase task-id alias. Required — a space carries an alias from
+    /// creation so it can own tasks without a later assignment step.
+    pub alias: &'a str,
     pub path: Option<&'a str>,
     pub description: Option<&'a str>,
 }
 
-/// Insert a new space. Fails if the slug is already taken.
+/// Insert a new space. Fails if the slug or alias is already taken. The
+/// alias is uppercased and must not collide with any project or space
+/// alias — the DB CHECK and cross-container triggers enforce this.
 pub fn add(conn: &Connection, args: AddArgs) -> Result<Space> {
     let name = args.name.unwrap_or(args.slug);
+    let alias = args.alias.to_ascii_uppercase();
     conn.execute(
-        "INSERT INTO spaces (slug, name, path, description) VALUES (?, ?, ?, ?)",
-        params![args.slug, name, args.path, args.description],
+        "INSERT INTO spaces (slug, name, alias, path, description) VALUES (?, ?, ?, ?, ?)",
+        params![args.slug, name, alias, args.path, args.description],
     )
     .with_context(|| format!("failed to insert space {}", args.slug))?;
     get_by_slug(conn, args.slug)?
@@ -120,6 +130,7 @@ pub fn add(conn: &Connection, args: AddArgs) -> Result<Space> {
 #[derive(Default)]
 pub struct EditArgs<'a> {
     pub name: Option<&'a str>,
+    pub alias: Option<&'a str>,
     pub path: Option<&'a str>,
     pub status: Option<&'a str>,
     pub description: Option<&'a str>,
@@ -128,6 +139,7 @@ pub struct EditArgs<'a> {
 impl EditArgs<'_> {
     fn is_empty(&self) -> bool {
         self.name.is_none()
+            && self.alias.is_none()
             && self.path.is_none()
             && self.status.is_none()
             && self.description.is_none()
@@ -142,15 +154,24 @@ pub fn edit(conn: &Connection, slug: &str, args: EditArgs) -> Result<Space> {
     if get_by_slug(conn, slug)?.is_none() {
         bail!("space not found: {slug}");
     }
+    let alias_upper = args.alias.map(str::to_ascii_uppercase);
     conn.execute(
         "UPDATE spaces SET \
             name        = COALESCE(?, name), \
+            alias       = COALESCE(?, alias), \
             path        = COALESCE(?, path), \
             status      = COALESCE(?, status), \
             description = COALESCE(?, description), \
             updated_at  = strftime('%Y-%m-%dT%H:%M:%fZ','now') \
          WHERE slug = ?",
-        params![args.name, args.path, args.status, args.description, slug],
+        params![
+            args.name,
+            alias_upper,
+            args.path,
+            args.status,
+            args.description,
+            slug
+        ],
     )
     .with_context(|| format!("failed to update space {slug}"))?;
     get_by_slug(conn, slug)?.with_context(|| format!("space {slug} missing after update"))
@@ -161,8 +182,24 @@ pub fn render_list(spaces: &[Space]) -> String {
     if spaces.is_empty() {
         return String::from("(no spaces)\n");
     }
-    let slug_w = spaces.iter().map(|s| s.slug.len()).max().unwrap_or(4).max(4);
-    let name_w = spaces.iter().map(|s| s.name.len()).max().unwrap_or(4).max(4);
+    let slug_w = spaces
+        .iter()
+        .map(|s| s.slug.len())
+        .max()
+        .unwrap_or(4)
+        .max(4);
+    let name_w = spaces
+        .iter()
+        .map(|s| s.name.len())
+        .max()
+        .unwrap_or(4)
+        .max(4);
+    let alias_w = spaces
+        .iter()
+        .map(|s| s.alias.as_deref().unwrap_or("-").len())
+        .max()
+        .unwrap_or(5)
+        .max(5);
     let status_w = spaces
         .iter()
         .map(|s| s.status.len())
@@ -172,13 +209,14 @@ pub fn render_list(spaces: &[Space]) -> String {
 
     let mut out = String::new();
     out.push_str(&format!(
-        "{:<slug_w$}  {:<name_w$}  {:<status_w$}  {:>8}  path\n",
-        "slug", "name", "status", "projects",
+        "{:<slug_w$}  {:<alias_w$}  {:<name_w$}  {:<status_w$}  {:>8}  path\n",
+        "slug", "alias", "name", "status", "projects",
     ));
     for s in spaces {
         out.push_str(&format!(
-            "{:<slug_w$}  {:<name_w$}  {:<status_w$}  {:>8}  {}\n",
+            "{:<slug_w$}  {:<alias_w$}  {:<name_w$}  {:<status_w$}  {:>8}  {}\n",
             s.slug,
+            s.alias.as_deref().unwrap_or("-"),
             s.name,
             s.status,
             s.project_count,
@@ -193,7 +231,14 @@ pub fn render_show(s: &Space) -> String {
     let mut out = String::new();
     out.push_str(&format!("slug:        {}\n", s.slug));
     out.push_str(&format!("name:        {}\n", s.name));
-    out.push_str(&format!("path:        {}\n", s.path.as_deref().unwrap_or("-")));
+    out.push_str(&format!(
+        "alias:       {}\n",
+        s.alias.as_deref().unwrap_or("-")
+    ));
+    out.push_str(&format!(
+        "path:        {}\n",
+        s.path.as_deref().unwrap_or("-")
+    ));
     out.push_str(&format!("status:      {}\n", s.status));
     out.push_str(&format!("projects:    {}\n", s.project_count));
     if let Some(desc) = &s.description {
@@ -227,12 +272,14 @@ mod tests {
             AddArgs {
                 slug: "acme",
                 name: Some("Acme"),
+                alias: "ICE",
                 path: Some("projects/acme"),
                 description: Some("Client engagements"),
             },
         )
         .unwrap();
         assert_eq!(s.slug, "acme");
+        assert_eq!(s.alias.as_deref(), Some("ICE"));
         assert_eq!(s.project_count, 0);
 
         let listed = list(&conn, false).unwrap();
@@ -247,6 +294,7 @@ mod tests {
             AddArgs {
                 slug: "acme",
                 name: None,
+                alias: "ICE",
                 path: None,
                 description: None,
             },
@@ -282,6 +330,7 @@ mod tests {
             AddArgs {
                 slug: "acme",
                 name: None,
+                alias: "ICE",
                 path: None,
                 description: None,
             },
@@ -310,6 +359,12 @@ mod tests {
         )
         .unwrap();
         assert_eq!(p.space_id, None);
-        assert_eq!(get_by_slug(&conn, "acme").unwrap().unwrap().project_count, 0);
+        assert_eq!(
+            get_by_slug(&conn, "acme")
+                .unwrap()
+                .unwrap()
+                .project_count,
+            0
+        );
     }
 }

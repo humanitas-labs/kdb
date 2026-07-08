@@ -31,7 +31,7 @@ use crate::color;
 // mod tests                           L219
 // fn setup()                          L227
 // fn attach_detach_label_to_task()    L235
-// fn add_edit()                       L277
+// fn add_edit()                       L279
 // ----------------------------------------
 
 #[derive(Debug, Clone, Serialize)]
@@ -219,9 +219,9 @@ pub fn render_show(l: &Label) -> String {
 mod tests {
     use super::*;
     use crate::db;
-    use crate::workspace::root::ROOT_MARKER;
     use crate::projects::{self, AddArgs as ProjAddArgs};
     use crate::tasks::{self, AddArgs as TaskAddArgs};
+    use crate::workspace::root::ROOT_MARKER;
     use tempfile::TempDir;
 
     fn setup() -> (TempDir, Connection) {
@@ -249,7 +249,8 @@ mod tests {
         let t = tasks::add(
             &mut conn,
             TaskAddArgs {
-                project_id: p.id,
+                project_id: Some(p.id),
+                space_id: None,
                 title: "x",
                 body: None,
                 priority: None,

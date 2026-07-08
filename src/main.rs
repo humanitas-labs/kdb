@@ -7,19 +7,19 @@ use std::path::PathBuf;
 //
 // struct Cli               L32
 // enum Command             L38
-// enum CodemapCmd         L232
-// enum CollectionCmd      L270
-// enum ProjectsCmd        L284
-// enum SpacesCmd          L349
-// enum TasksCmd           L399
-// enum TaskLabelCmd       L544
-// enum CyclesCmd          L562
-// enum LabelsCmd          L611
-// struct StatusKindArg    L648
-// fn resolve_kind()       L657
-// fn parse_bool_flag()    L668
-// enum StatusesCmd        L679
-// async fn main()         L761
+// enum CodemapCmd         L235
+// enum CollectionCmd      L273
+// enum ProjectsCmd        L287
+// enum SpacesCmd          L352
+// enum TasksCmd           L409
+// enum TaskLabelCmd       L558
+// enum CyclesCmd          L576
+// enum LabelsCmd          L625
+// struct StatusKindArg    L662
+// fn resolve_kind()       L671
+// fn parse_bool_flag()    L682
+// enum StatusesCmd        L691
+// async fn main()         L773
 // ----------------------------
 
 #[derive(Debug, Parser)]
@@ -133,6 +133,9 @@ enum Command {
         /// Materialize TODO for a single project slug.
         #[arg(short = 'P', long)]
         project: Option<String>,
+        /// Materialize the space-level rollup board for this space slug.
+        #[arg(short = 'S', long)]
+        space: Option<String>,
         /// Materialize TODO for every non-archived project.
         #[arg(long)]
         all: bool,
@@ -361,6 +364,10 @@ enum SpacesCmd {
     Add {
         /// Unique slug (e.g. "acme").
         slug: String,
+        /// Uppercase task-id alias (e.g. "ICE"). Used in ids for the space's
+        /// own tasks; must not collide with any project or space alias.
+        #[arg(short = 'a', long)]
+        alias: String,
         /// Display name (defaults to slug).
         #[arg(short = 'n', long)]
         name: Option<String>,
@@ -377,6 +384,9 @@ enum SpacesCmd {
         slug: String,
         #[arg(short = 'n', long)]
         name: Option<String>,
+        /// Uppercase task-id alias.
+        #[arg(short = 'a', long)]
+        alias: Option<String>,
         #[arg(short = 'p', long)]
         path: Option<String>,
         /// Status slug (must exist in project_statuses).
@@ -435,6 +445,10 @@ enum TasksCmd {
         /// Project slug (defaults to the active project).
         #[arg(short = 'P', long)]
         project: Option<String>,
+        /// Space slug — file the task as space-native (owned by the space,
+        /// not a project). Mutually exclusive with -P.
+        #[arg(short = 'S', long)]
+        space: Option<String>,
         /// Body text.
         #[arg(short = 'b', long)]
         body: Option<String>,
@@ -669,9 +683,7 @@ fn parse_bool_flag(s: &str) -> Result<bool, String> {
     match s.to_ascii_lowercase().as_str() {
         "true" | "t" | "yes" | "y" | "1" => Ok(true),
         "false" | "f" | "no" | "n" | "0" => Ok(false),
-        other => Err(format!(
-            "expected true/false/yes/no/1/0, got '{other}'"
-        )),
+        other => Err(format!("expected true/false/yes/no/1/0, got '{other}'")),
     }
 }
 
@@ -804,9 +816,10 @@ async fn main() {
         Command::Render {
             file,
             project,
+            space,
             all,
             limit,
-        } => kdb::cmd::render(file, project, all, limit),
+        } => kdb::cmd::render(file, project, space, all, limit),
         Command::Fmt { path, force } => kdb::cmd::format(path, force),
         Command::Lsp { path } => kdb::lsp::serve(path).await,
         Command::Update { check } => kdb::cmd::update(check),
@@ -835,17 +848,19 @@ async fn main() {
             SpacesCmd::List { all, json } => kdb::cmd::spaces_list(all, json),
             SpacesCmd::Add {
                 slug,
+                alias,
                 name,
                 path,
                 description,
-            } => kdb::cmd::spaces_add(slug, name, path, description),
+            } => kdb::cmd::spaces_add(slug, alias, name, path, description),
             SpacesCmd::Edit {
                 slug,
                 name,
+                alias,
                 path,
                 status,
                 description,
-            } => kdb::cmd::spaces_edit(slug, name, path, status, description),
+            } => kdb::cmd::spaces_edit(slug, name, alias, path, status, description),
             SpacesCmd::Show { slug, json } => kdb::cmd::spaces_show(slug, json),
         },
         Command::Tasks { action } => match action.unwrap_or(TasksCmd::List {
@@ -880,13 +895,16 @@ async fn main() {
             TasksCmd::Add {
                 title,
                 project,
+                space,
                 body,
                 priority,
                 cycle,
                 parent,
                 before,
                 after,
-            } => kdb::cmd::tasks_add(title, project, body, priority, cycle, parent, before, after),
+            } => kdb::cmd::tasks_add(
+                title, project, space, body, priority, cycle, parent, before, after,
+            ),
             TasksCmd::Move {
                 id,
                 before,
@@ -947,9 +965,7 @@ async fn main() {
             LabelsCmd::Show { slug, json } => kdb::cmd::labels_show(slug, json),
         },
         Command::Statuses { action } => match action {
-            StatusesCmd::List { kind, json } => {
-                kdb::cmd::statuses_list(resolve_kind(&kind), json)
-            }
+            StatusesCmd::List { kind, json } => kdb::cmd::statuses_list(resolve_kind(&kind), json),
             StatusesCmd::Add {
                 slug,
                 kind,

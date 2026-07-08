@@ -32,75 +32,76 @@ use rusqlite::Connection;
 // -----------------------------------------------------------
 // projects/kdb/src/cmd.rs
 //
-// pub struct CmdContext                                  L107
-//   pub fn from_path()                                   L118
-//   pub fn build_index()                                 L128
-//   pub fn build_workspace_index()                       L133
-//   pub fn rel_path()                                    L141
-// pub fn init()                                          L168
-// pub fn root()                                          L223
-// pub fn check()                                         L233
-// pub fn tree()                                          L250
-// pub fn symbols()                                       L298
-// pub fn refs()                                          L359
-// pub fn deps()                                          L430
-// pub fn graph()                                         L465
-// pub fn render()                                        L480
-// pub fn format()                                        L530
-// pub fn update()                                        L571
-// pub fn projects_list()                                 L578
-// pub fn projects_add()                                  L597
-// pub fn projects_edit()                                 L630
-// pub fn projects_show()                                 L664
-// fn resolve_space_id()                                  L685
-// fn ensure_space_exists()                               L692
-// pub fn spaces_list()                                   L697
-// pub fn spaces_add()                                    L713
-// pub fn spaces_edit()                                   L735
-// pub fn spaces_show()                                   L759
-// fn resolve_project()                                   L786
-// fn resolve_cycle()                                     L804
-// fn resolve_parent()                                    L818
-// fn parse_statuses()                                    L831
-// pub fn tasks_list()                                    L869
-// pub fn tasks_add()                                     L924
-// fn resolve_add_position()                              L976
-// pub fn tasks_edit()                                   L1002
-// pub fn tasks_view()                                   L1053
-// struct TaskViewOutput                                 L1064
-// pub fn tasks_move()                                   L1084
-// pub fn tasks_delete()                                 L1128
-// pub fn tasks_restore()                                L1148
-// pub fn tasks_purge()                                  L1159
-// pub fn cycles_list()                                  L1197
-// pub fn cycles_add()                                   L1211
-// pub fn cycles_edit()                                  L1239
-// pub fn cycles_show()                                  L1264
-// pub fn labels_list()                                  L1280
-// pub fn labels_add()                                   L1294
-// pub fn labels_edit()                                  L1309
-// pub fn labels_show()                                  L1324
-// pub fn tasks_label_add()                              L1341
-// pub fn tasks_label_rm()                               L1360
-// pub fn statuses_list()                                L1379
-// pub fn statuses_add()                                 L1396
-// fn resolve_add_flag()                                 L1427
-// pub fn statuses_edit()                                L1447
-// fn resolve_edit_flag()                                L1480
-// pub fn statuses_rm()                                  L1516
-// pub fn statuses_show()                                L1525
-// pub fn tasks_set_status()                             L1541
-// pub fn search()                                       L1552
-// fn print_line_context()                               L1637
-// pub fn index()                                        L1665
-// pub fn collection_add()                               L1680
-// pub fn collection_list()                              L1697
-// mod tests                                             L1712
-// fn setup()                                            L1717
-// fn open_selector_resolves_to_non_closed_statuses()    L1725
-// fn all_selector_means_no_filter()                     L1734
-// fn unknown_status_is_rejected()                       L1740
-// fn open_default_survives_seeded_status_removal()      L1746
+// pub struct CmdContext                                  L108
+//   pub fn from_path()                                   L119
+//   pub fn build_index()                                 L129
+//   pub fn build_workspace_index()                       L134
+//   pub fn rel_path()                                    L142
+// pub fn init()                                          L169
+// pub fn root()                                          L224
+// pub fn check()                                         L234
+// pub fn tree()                                          L251
+// pub fn symbols()                                       L299
+// pub fn refs()                                          L360
+// pub fn deps()                                          L431
+// pub fn graph()                                         L466
+// pub fn render()                                        L481
+// pub fn format()                                        L545
+// pub fn update()                                        L586
+// pub fn projects_list()                                 L593
+// pub fn projects_add()                                  L612
+// pub fn projects_edit()                                 L645
+// pub fn projects_show()                                 L679
+// fn resolve_space_id()                                  L700
+// fn ensure_space_exists()                               L707
+// pub fn spaces_list()                                   L712
+// pub fn spaces_add()                                    L728
+// pub fn spaces_edit()                                   L752
+// pub fn spaces_show()                                   L778
+// fn materialize_for()                                   L805
+// fn resolve_project()                                   L817
+// fn resolve_cycle()                                     L835
+// fn resolve_parent()                                    L849
+// fn parse_statuses()                                    L862
+// pub fn tasks_list()                                    L900
+// pub fn tasks_add()                                     L956
+// fn resolve_add_position()                             L1037
+// pub fn tasks_edit()                                   L1064
+// pub fn tasks_view()                                   L1114
+// struct TaskViewOutput                                 L1125
+// pub fn tasks_move()                                   L1145
+// pub fn tasks_delete()                                 L1184
+// pub fn tasks_restore()                                L1203
+// pub fn tasks_purge()                                  L1214
+// pub fn cycles_list()                                  L1254
+// pub fn cycles_add()                                   L1268
+// pub fn cycles_edit()                                  L1296
+// pub fn cycles_show()                                  L1321
+// pub fn labels_list()                                  L1337
+// pub fn labels_add()                                   L1351
+// pub fn labels_edit()                                  L1366
+// pub fn labels_show()                                  L1381
+// pub fn tasks_label_add()                              L1398
+// pub fn tasks_label_rm()                               L1417
+// pub fn statuses_list()                                L1436
+// pub fn statuses_add()                                 L1453
+// fn resolve_add_flag()                                 L1484
+// pub fn statuses_edit()                                L1504
+// fn resolve_edit_flag()                                L1537
+// pub fn statuses_rm()                                  L1573
+// pub fn statuses_show()                                L1582
+// pub fn tasks_set_status()                             L1598
+// pub fn search()                                       L1609
+// fn print_line_context()                               L1694
+// pub fn index()                                        L1717
+// pub fn collection_add()                               L1732
+// pub fn collection_list()                              L1749
+// mod tests                                             L1764
+// fn setup()                                            L1769
+// fn open_selector_resolves_to_non_closed_statuses()    L1777
+// fn all_selector_means_no_filter()                     L1786
+// fn unknown_status_is_rejected()                       L1792
+// fn open_default_survives_seeded_status_removal()      L1798
 // -----------------------------------------------------------
 
 /// CLI command context: resolved start path + workspace state.
@@ -480,17 +481,31 @@ pub fn graph(path: Option<PathBuf>) -> Result<()> {
 pub fn render(
     file: Option<PathBuf>,
     project: Option<String>,
+    space: Option<String>,
     all: bool,
     limit: Option<i64>,
 ) -> Result<()> {
-    if all || project.is_some() {
+    if all || project.is_some() || space.is_some() {
         if file.is_some() {
-            bail!("--project/--all cannot be combined with a file argument");
+            bail!("--project/--space/--all cannot be combined with a file argument");
+        }
+        let selectors = [all, project.is_some(), space.is_some()]
+            .iter()
+            .filter(|b| **b)
+            .count();
+        if selectors > 1 {
+            bail!("--project, --space, and --all are mutually exclusive");
         }
         let ctx = CmdContext::from_path(None)?;
         let conn = db::open(&ctx.workspace.root)?;
         let written = if all {
             materialize::materialize_all(&conn, &ctx.workspace.root, limit)?
+        } else if let Some(slug) = space {
+            vec![materialize::materialize_space(
+                &conn,
+                &ctx.workspace.root,
+                &slug,
+            )?]
         } else {
             let slug = project.expect("project checked above");
             vec![materialize::materialize_project(
@@ -712,6 +727,7 @@ pub fn spaces_list(include_archived: bool, as_json: bool) -> Result<()> {
 /// Insert a new space.
 pub fn spaces_add(
     slug: String,
+    alias: String,
     name: Option<String>,
     path: Option<String>,
     description: Option<String>,
@@ -723,6 +739,7 @@ pub fn spaces_add(
         spaces::AddArgs {
             slug: &slug,
             name: name.as_deref(),
+            alias: &alias,
             path: path.as_deref(),
             description: description.as_deref(),
         },
@@ -735,6 +752,7 @@ pub fn spaces_add(
 pub fn spaces_edit(
     slug: String,
     name: Option<String>,
+    alias: Option<String>,
     path: Option<String>,
     status: Option<String>,
     description: Option<String>,
@@ -746,6 +764,7 @@ pub fn spaces_edit(
         &slug,
         spaces::EditArgs {
             name: name.as_deref(),
+            alias: alias.as_deref(),
             path: path.as_deref(),
             status: status.as_deref(),
             description: description.as_deref(),
@@ -776,6 +795,18 @@ pub fn spaces_show(slug: String, as_json: bool) -> Result<()> {
         } else {
             print!("{}", projects::render_list(&members));
         }
+    }
+    Ok(())
+}
+
+/// Re-materialize the board that owns `view` — the space board for a
+/// space-native task, the project board otherwise. `project_slug` doubles
+/// as the owner slug (space slug for space-native tasks).
+fn materialize_for(conn: &Connection, root: &Path, view: &tasks::TaskView) -> Result<()> {
+    if view.task.space_id.is_some() {
+        materialize::materialize_space(conn, root, &view.project_slug)?;
+    } else {
+        materialize::materialize_project(conn, root, &view.project_slug, None)?;
     }
     Ok(())
 }
@@ -903,6 +934,7 @@ pub fn tasks_list(
         statuses: statuses_refs.as_deref(),
         project_slug: project_slug.as_deref(),
         space_slug: space_slug.as_deref(),
+        space_native_slug: None,
         cycle_key: cycle.as_deref(),
         priority,
         limit,
@@ -924,6 +956,7 @@ pub fn tasks_list(
 pub fn tasks_add(
     title: String,
     project: Option<String>,
+    space: Option<String>,
     body: Option<String>,
     priority: Option<i64>,
     cycle: Option<String>,
@@ -934,14 +967,41 @@ pub fn tasks_add(
     if before.is_some() && after.is_some() {
         bail!("--before and --after are mutually exclusive");
     }
+    if project.is_some() && space.is_some() {
+        bail!("-P/--project and -S/--space are mutually exclusive (a task has one owner)");
+    }
     let ctx = CmdContext::from_path(None)?;
     let mut conn = db::open(&ctx.workspace.root)?;
-    let proj = resolve_project(&conn, &ctx.workspace.root, project.as_deref())?;
+
+    // Owner is a project or a space. -S selects a space; otherwise fall back
+    // to the active project.
+    let (owner_project, owner_space) = match space.as_deref() {
+        Some(slug) => {
+            let sp = spaces::get_by_slug(&conn, slug)?
+                .with_context(|| format!("space not found: {slug}"))?;
+            if sp.alias.is_none() {
+                bail!(
+                    "space {slug} has no alias — set one with `kdb spaces edit {slug} --alias <ABC>`"
+                );
+            }
+            (None, Some(sp.id))
+        }
+        None => {
+            let proj = resolve_project(&conn, &ctx.workspace.root, project.as_deref())?;
+            (Some(proj.id), None)
+        }
+    };
 
     let cycle_id = resolve_cycle(&conn, cycle.as_deref())?.flatten();
     let parent_id_explicit = resolve_parent(&conn, parent.as_deref())?;
 
-    let position = resolve_add_position(&conn, proj.id, before.as_deref(), after.as_deref())?;
+    let position = resolve_add_position(
+        &conn,
+        owner_project,
+        owner_space,
+        before.as_deref(),
+        after.as_deref(),
+    )?;
     // Inherit parent from the sibling we're anchoring to when --parent not given explicitly.
     let parent_id = match (parent_id_explicit, &position) {
         (Some(explicit), _) => explicit,
@@ -957,7 +1017,8 @@ pub fn tasks_add(
     let view = tasks::add(
         &mut conn,
         tasks::AddArgs {
-            project_id: proj.id,
+            project_id: owner_project,
+            space_id: owner_space,
             title: &title,
             body: body.as_deref(),
             priority,
@@ -968,14 +1029,15 @@ pub fn tasks_add(
             order: order_key.as_deref(),
         },
     )?;
-    materialize::materialize_project(&conn, &ctx.workspace.root, &view.project_slug, None)?;
+    materialize_for(&conn, &ctx.workspace.root, &view)?;
     println!("added task {}", view.external_id());
     Ok(())
 }
 
 fn resolve_add_position(
     conn: &rusqlite::Connection,
-    project_id: i64,
+    owner_project: Option<i64>,
+    owner_space: Option<i64>,
     before: Option<&str>,
     after: Option<&str>,
 ) -> Result<Option<(tasks::TaskView, tasks::Side)>> {
@@ -986,11 +1048,11 @@ fn resolve_add_position(
         (Some(_), Some(_)) => unreachable!("caller validates mutual exclusion"),
     };
     let parsed = tasks::TaskId::parse(raw)?;
-    let view = tasks::get(conn, &parsed)?
-        .with_context(|| format!("anchor task not found: {raw}"))?;
-    if view.task.project_id != project_id {
+    let view =
+        tasks::get(conn, &parsed)?.with_context(|| format!("anchor task not found: {raw}"))?;
+    if view.task.project_id != owner_project || view.task.space_id != owner_space {
         bail!(
-            "anchor task {} is in project {}, not the target project",
+            "anchor task {} belongs to {}, not the target owner",
             view.external_id(),
             view.project_slug
         );
@@ -1037,14 +1099,13 @@ pub fn tasks_edit(
             },
         )?
     } else {
-        tasks::get(&conn, &parsed)?
-            .with_context(|| format!("task not found: {id}"))?
+        tasks::get(&conn, &parsed)?.with_context(|| format!("task not found: {id}"))?
     };
     let view = match status.as_deref() {
         Some(s) => tasks::set_status(&conn, &parsed, s)?,
         None => view,
     };
-    materialize::materialize_project(&conn, &ctx.workspace.root, &view.project_slug, None)?;
+    materialize_for(&conn, &ctx.workspace.root, &view)?;
     println!("updated task {}", view.external_id());
     Ok(())
 }
@@ -1092,15 +1153,10 @@ pub fn tasks_move(
     let conn = db::open(&ctx.workspace.root)?;
     let parsed = tasks::TaskId::parse(&id)?;
 
-    let chosen = [
-        before.is_some(),
-        after.is_some(),
-        top,
-        bottom,
-    ]
-    .iter()
-    .filter(|b| **b)
-    .count();
+    let chosen = [before.is_some(), after.is_some(), top, bottom]
+        .iter()
+        .filter(|b| **b)
+        .count();
     if chosen != 1 {
         bail!("exactly one of --before, --after, --top, --bottom must be given");
     }
@@ -1118,7 +1174,7 @@ pub fn tasks_move(
     };
 
     let view = tasks::move_task(&conn, &parsed, target)?;
-    materialize::materialize_project(&conn, &ctx.workspace.root, &view.project_slug, None)?;
+    materialize_for(&conn, &ctx.workspace.root, &view)?;
     println!("moved {} (order={})", view.external_id(), view.task.order);
     Ok(())
 }
@@ -1132,13 +1188,12 @@ pub fn tasks_delete(id: String, hard: bool) -> Result<()> {
     if hard {
         let existing = tasks::get_including_deleted(&conn, &parsed)?
             .with_context(|| format!("task not found: {}", parsed.render()))?;
-        let project_slug = existing.project_slug.clone();
         tasks::hard_delete(&mut conn, &parsed)?;
-        materialize::materialize_project(&conn, &ctx.workspace.root, &project_slug, None)?;
+        materialize_for(&conn, &ctx.workspace.root, &existing)?;
         println!("hard-deleted {}", existing.external_id());
     } else {
         let view = tasks::soft_delete(&mut conn, &parsed)?;
-        materialize::materialize_project(&conn, &ctx.workspace.root, &view.project_slug, None)?;
+        materialize_for(&conn, &ctx.workspace.root, &view)?;
         println!("deleted {}", view.external_id());
     }
     Ok(())
@@ -1150,7 +1205,7 @@ pub fn tasks_restore(id: String) -> Result<()> {
     let mut conn = db::open(&ctx.workspace.root)?;
     let parsed = tasks::TaskId::parse(&id)?;
     let view = tasks::restore(&mut conn, &parsed)?;
-    materialize::materialize_project(&conn, &ctx.workspace.root, &view.project_slug, None)?;
+    materialize_for(&conn, &ctx.workspace.root, &view)?;
     println!("restored {}", view.external_id());
     Ok(())
 }
@@ -1183,11 +1238,13 @@ pub fn tasks_purge(
         println!("  {}  {}", m.external_id(), m.task.title);
     }
     if !dry_run {
-        let mut slugs: Vec<&str> = matches.iter().map(|m| m.project_slug.as_str()).collect();
-        slugs.sort();
-        slugs.dedup();
-        for slug in slugs {
-            materialize::materialize_project(&conn, &ctx.workspace.root, slug, None)?;
+        // Re-materialize each distinct owner board once (project or space).
+        let mut seen: std::collections::HashSet<(bool, &str)> = std::collections::HashSet::new();
+        for m in &matches {
+            let is_space = m.task.space_id.is_some();
+            if seen.insert((is_space, m.project_slug.as_str())) {
+                materialize_for(&conn, &ctx.workspace.root, m)?;
+            }
         }
     }
     Ok(())
@@ -1347,7 +1404,7 @@ pub fn tasks_label_add(id: String, label_slugs: Vec<String>) -> Result<()> {
         let label = labels::upsert_by_slug(&conn, slug)?;
         labels::attach(&conn, view.task.id, label.id)?;
     }
-    materialize::materialize_project(&conn, &ctx.workspace.root, &view.project_slug, None)?;
+    materialize_for(&conn, &ctx.workspace.root, &view)?;
     println!(
         "attached {} label(s) to {}",
         label_slugs.len(),
@@ -1370,7 +1427,7 @@ pub fn tasks_label_rm(id: String, label_slugs: Vec<String>) -> Result<()> {
             }
         }
     }
-    materialize::materialize_project(&conn, &ctx.workspace.root, &view.project_slug, None)?;
+    materialize_for(&conn, &ctx.workspace.root, &view)?;
     println!("detached {removed} label(s) from {}", view.external_id());
     Ok(())
 }
@@ -1381,8 +1438,8 @@ pub fn statuses_list(kind: statuses::Kind, as_json: bool) -> Result<()> {
     let conn = db::open(&ctx.workspace.root)?;
     let rows = statuses::list(&conn, kind)?;
     if as_json {
-        let output = serde_json::to_string_pretty(&rows)
-            .context("failed to serialize statuses as JSON")?;
+        let output =
+            serde_json::to_string_pretty(&rows).context("failed to serialize statuses as JSON")?;
         println!("{output}");
     } else {
         print!("{}", statuses::render_list(&rows, kind));
@@ -1528,8 +1585,8 @@ pub fn statuses_show(slug: String, kind: statuses::Kind, as_json: bool) -> Resul
     let status = statuses::get(&conn, kind, &slug)?
         .with_context(|| format!("{} not found: {slug}", kind.table()))?;
     if as_json {
-        let output = serde_json::to_string_pretty(&status)
-            .context("failed to serialize status as JSON")?;
+        let output =
+            serde_json::to_string_pretty(&status).context("failed to serialize status as JSON")?;
         println!("{output}");
     } else {
         print!("{}", statuses::render_show(&status, kind));
@@ -1543,7 +1600,7 @@ pub fn tasks_set_status(id: String, status: &str) -> Result<()> {
     let conn = db::open(&ctx.workspace.root)?;
     let parsed = tasks::TaskId::parse(&id)?;
     let view = tasks::set_status(&conn, &parsed, status)?;
-    materialize::materialize_project(&conn, &ctx.workspace.root, &view.project_slug, None)?;
+    materialize_for(&conn, &ctx.workspace.root, &view)?;
     println!("{} -> {}", view.external_id(), view.task.status);
     Ok(())
 }
@@ -1650,12 +1707,7 @@ fn print_line_context(root: &Path, rel: &str, needles: &[String], n: usize) -> b
     let width = (end).to_string().len();
     for (idx, line) in lines.iter().enumerate().take(end).skip(start) {
         let marker = if idx == hit_idx { '>' } else { ' ' };
-        println!(
-            "   {marker} {:>width$} | {}",
-            idx + 1,
-            line,
-            width = width
-        );
+        println!("   {marker} {:>width$} | {}", idx + 1, line, width = width);
     }
     println!();
     true

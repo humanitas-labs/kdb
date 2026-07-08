@@ -15,36 +15,42 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::projects::{self, Project};
+use crate::spaces;
 use crate::statuses::{self, Status};
 use crate::tasks::{self, ListFilters, TaskView};
 
-// -----------------------------------------------------
+// -----------------------------------------------------------------
 // projects/kdb/src/materialize.rs
 //
-// const TASKS_DIR                                   L50
-// const INDEX_FILE                                  L51
-// const GENERATED_NOTE                              L54
-// pub fn materialize_project()                      L59
-// pub fn materialize_all()                          L71
-// fn materialize()                                  L80
-// fn read_top_n()                                  L143
-// fn render_index()                                L161
-// fn push_description()                            L216
-// fn truncate_to_top_n()                           L227
-// fn push_table()                                  L238
-// fn top_seq()                                     L264
-// fn task_file_name()                              L275
-// fn escape_md_cell()                              L279
-// fn render_task_file()                            L286
-// fn clean_stale_task_files()                      L315
-// const PREFIX                                     L316
-// mod tests                                        L347
-// fn setup()                                       L355
-// fn materialize_writes_todo_and_per_task()        L363
-// fn stale_task_files_are_cleaned()                L411
-// fn top_n_truncates_open_list()                   L458
-// fn subtasks_render_in_parent_file_not_index()    L498
-// -----------------------------------------------------
+// const TASKS_DIR                                               L56
+// const INDEX_FILE                                              L57
+// const GENERATED_NOTE                                          L60
+// pub fn materialize_project()                                  L65
+// pub fn materialize_all()                                      L77
+// fn materialize()                                              L86
+// pub fn materialize_space()                                   L153
+// fn group_by_status()                                         L242
+// fn write_task_files()                                        L256
+// fn relative_tasks_prefix()                                   L287
+// fn read_top_n()                                              L308
+// fn render_status_sections()                                  L333
+// fn push_description()                                        L383
+// fn truncate_to_top_n()                                       L394
+// fn push_table()                                              L405
+// fn top_seq()                                                 L430
+// fn task_file_name()                                          L441
+// fn escape_md_cell()                                          L445
+// fn render_task_file()                                        L452
+// fn clean_stale_task_files()                                  L481
+// const PREFIX                                                 L482
+// mod tests                                                    L513
+// fn setup()                                                   L522
+// fn materialize_space_groups_owners_and_links_relatively()    L530
+// fn materialize_writes_todo_and_per_task()                    L613
+// fn stale_task_files_are_cleaned()                            L663
+// fn top_n_truncates_open_list()                               L712
+// fn subtasks_render_in_parent_file_not_index()                L754
+// -----------------------------------------------------------------
 
 /// Subdir under each project's path where materialized files live.
 const TASKS_DIR: &str = ".tasks";
@@ -105,39 +111,262 @@ fn materialize(
     // statuses (e.g. `in_review`) render alongside the seeded ones,
     // in the configured `sort_order`.
     let status_defs = statuses::list(conn, statuses::Kind::Task)?;
-    let mut by_status: HashMap<String, Vec<TaskView>> = HashMap::new();
-    for t in &all {
-        by_status.entry(t.task.status.clone()).or_default().push(t.clone());
+    let by_status = group_by_status(&all);
+    write_task_files(conn, &out_dir, &status_defs, &by_status, top_n)?;
+
+    let mut body = String::new();
+    body.push_str(&format!("# {} — Tasks\n\n", project.slug));
+    body.push_str(GENERATED_NOTE);
+    body.push_str("\n\n");
+    render_status_sections(
+        &mut body,
+        "-P",
+        &project.slug,
+        &status_defs,
+        &by_status,
+        top_n,
+        2,
+        Some(""),
+    );
+    body.push_str("## Commands\n\n");
+    body.push_str(&format!(
+        "- `kdb tasks list -P {slug}` — full list\n\
+         - `kdb tasks add \"title\" -P {slug}` — add a task\n\
+         - `kdb tasks view <id>` — view a task\n",
+        slug = project.slug,
+    ));
+
+    let out_path = out_dir.join(INDEX_FILE);
+    fs::write(&out_path, body)
+        .with_context(|| format!("failed to write {}", out_path.display()))?;
+    Ok(out_path)
+}
+
+/// Write the space-level rollup board at `<space.path>/.tasks/index.md`.
+///
+/// The space owns `.tasks/` outright: its own space-native tasks get their
+/// `T-*.md` files here, and each member project's board is refreshed in place
+/// (their files stay under their own path). The index is **status-major** — one
+/// merged table per horizon (In Progress, Today, Cycle, …) spanning every
+/// project plus the space's own tasks, with a Project column, so the whole
+/// day's work at a given horizon reads as one table. Each row links into
+/// whichever `.tasks/` dir holds its file.
+pub fn materialize_space(conn: &Connection, root: &Path, slug: &str) -> Result<PathBuf> {
+    let space =
+        spaces::get_by_slug(conn, slug)?.with_context(|| format!("space not found: {slug}"))?;
+    let space_path = space.path.clone().with_context(|| {
+        format!("space {slug} has no path — set one with `kdb spaces edit {slug} --path <rel>`")
+    })?;
+    // A space must carry an alias to own tasks / anchor a board.
+    space.alias.as_deref().with_context(|| {
+        format!("space {slug} has no alias — set one with `kdb spaces edit {slug} --alias <ABC>`")
+    })?;
+
+    let out_dir = root.join(&space_path).join(TASKS_DIR);
+    fs::create_dir_all(&out_dir)
+        .with_context(|| format!("failed to create {}", out_dir.display()))?;
+
+    let top_n = read_top_n(conn).unwrap_or(10);
+    let status_defs = statuses::list(conn, statuses::Kind::Task)?;
+
+    // The space's own tasks — write their per-task files into the space dir.
+    let space_tasks = tasks::list(
+        conn,
+        ListFilters {
+            space_native_slug: Some(slug),
+            top_level_only: true,
+            ..Default::default()
+        },
+    )?;
+    let by_status_space = group_by_status(&space_tasks);
+    write_task_files(conn, &out_dir, &status_defs, &by_status_space, top_n)?;
+
+    // Refresh each member project's own board so the links resolve, and map
+    // each to its link prefix. A member sharing the space's path would clobber
+    // the space dir — skip it (the space owns that path; re-path such a project).
+    let members = projects::list(conn, false, Some(slug))?;
+    let mut member_prefix: HashMap<String, String> = HashMap::new();
+    for member in &members {
+        if member.path == space_path {
+            continue;
+        }
+        materialize(conn, root, member, None)?;
+        member_prefix.insert(
+            member.slug.clone(),
+            relative_tasks_prefix(&space_path, &member.path),
+        );
     }
 
-    // Materialize per-task files for every open and non-hidden status,
-    // truncated to top_n so a runaway status (typically backlog) can't
-    // blow up `.tasks/`. Closed or hidden statuses don't get files at all.
-    let mut expected: HashSet<String> = HashSet::new();
+    // Every task under the space — space-native plus all member-project tasks —
+    // in one flat list, then bucketed by status for the merged tables.
+    let all = tasks::list(
+        conn,
+        ListFilters {
+            space_slug: Some(slug),
+            top_level_only: true,
+            ..Default::default()
+        },
+    )?;
+    let by_status = group_by_status(&all);
+
+    let mut out = String::new();
+    out.push_str(&format!("# {} — Space Board\n\n", space.name));
+    out.push_str(GENERATED_NOTE);
+    out.push_str("\n\n");
+
+    let empty: Vec<TaskView> = Vec::new();
     for status in &status_defs {
+        let tasks = by_status.get(&status.slug).unwrap_or(&empty);
+        let total = tasks.len();
+
+        if status.is_hidden {
+            out.push_str(&format!("## {} ({})\n\n", status.name, total));
+            push_description(&mut out, status);
+            out.push_str(&format!(
+                "_`kdb tasks list -S {slug} -s {status_slug}`_\n\n",
+                status_slug = status.slug,
+            ));
+            continue;
+        }
+
+        // Merge the horizon across all owners, most-urgent first (priority,
+        // then owner, then order), and cap to top_n across the whole space.
+        let mut merged: Vec<&TaskView> = tasks.iter().collect();
+        merged.sort_by(|a, b| {
+            a.task
+                .priority
+                .cmp(&b.task.priority)
+                .then_with(|| a.project_slug.cmp(&b.project_slug))
+                .then_with(|| a.task.order.cmp(&b.task.order))
+        });
+        let shown = if top_n < 0 {
+            merged.len()
+        } else {
+            (top_n as usize).min(merged.len())
+        };
+        let header = if total > shown {
+            format!("## {} (top {} of {})\n\n", status.name, shown, total)
+        } else {
+            format!("## {} ({})\n\n", status.name, total)
+        };
+        out.push_str(&header);
+        push_description(&mut out, status);
+        // Closed statuses have no materialized files → render unlinked.
+        let linkable = !status.flag;
+        push_space_table(&mut out, &merged[..shown], &member_prefix, linkable);
+    }
+
+    let out_path = out_dir.join(INDEX_FILE);
+    fs::write(&out_path, out).with_context(|| format!("failed to write {}", out_path.display()))?;
+    Ok(out_path)
+}
+
+/// Append a `| Task | Project | Title | Priority |` table for a merged,
+/// cross-owner slice of the space board. Each row links into its owner's
+/// `.tasks/` dir: space-native tasks sit alongside this board (no prefix),
+/// member-project tasks use their relative prefix from `member_prefix`.
+fn push_space_table(
+    out: &mut String,
+    tasks: &[&TaskView],
+    member_prefix: &HashMap<String, String>,
+    linkable: bool,
+) {
+    if tasks.is_empty() {
+        out.push_str("_(none)_\n\n");
+        return;
+    }
+    out.push_str("| Task | Project | Title | Priority |\n");
+    out.push_str("|---|---|---|---|\n");
+    for t in tasks {
+        let id = t.external_id();
+        let task_cell = if linkable {
+            let prefix = if t.task.space_id.is_some() {
+                ""
+            } else {
+                member_prefix
+                    .get(&t.project_slug)
+                    .map(String::as_str)
+                    .unwrap_or("")
+            };
+            format!("[{id}]({prefix}{})", task_file_name(top_seq(t)))
+        } else {
+            format!("`{id}`")
+        };
+        out.push_str(&format!(
+            "| {task_cell} | {proj} | {title} | {pri} |\n",
+            proj = t.project_slug,
+            title = escape_md_cell(&t.task.title),
+            pri = t.task.priority,
+        ));
+    }
+    out.push('\n');
+}
+
+/// Bucket top-level tasks by their status slug.
+fn group_by_status(all: &[TaskView]) -> HashMap<String, Vec<TaskView>> {
+    let mut by_status: HashMap<String, Vec<TaskView>> = HashMap::new();
+    for t in all {
+        by_status
+            .entry(t.task.status.clone())
+            .or_default()
+            .push(t.clone());
+    }
+    by_status
+}
+
+/// Materialize per-task `T-*.md` files into `out_dir` for every open,
+/// non-hidden status (truncated to `top_n`), then remove stale ones. Closed
+/// or hidden statuses get no files.
+fn write_task_files(
+    conn: &Connection,
+    out_dir: &Path,
+    status_defs: &[Status],
+    by_status: &HashMap<String, Vec<TaskView>>,
+    top_n: i64,
+) -> Result<()> {
+    let mut expected: HashSet<String> = HashSet::new();
+    for status in status_defs {
         if status.flag || status.is_hidden {
             continue;
         }
         let Some(tasks_in_status) = by_status.get(&status.slug) else {
             continue;
         };
-        let slice = truncate_to_top_n(tasks_in_status, top_n);
-        for t in slice {
+        for t in truncate_to_top_n(tasks_in_status, top_n) {
             let name = task_file_name(top_seq(t));
             let task_path = out_dir.join(&name);
             let subtree = tasks::descendants(conn, t.task.id)?;
-            fs::write(&task_path, render_task_file(project, t, &subtree))
+            fs::write(&task_path, render_task_file(t, &subtree))
                 .with_context(|| format!("failed to write {}", task_path.display()))?;
             expected.insert(name);
         }
     }
-    clean_stale_task_files(&out_dir, &expected)?;
+    clean_stale_task_files(out_dir, &expected)
+}
 
-    let body = render_index(project, &status_defs, &by_status, top_n);
-    let out_path = out_dir.join(INDEX_FILE);
-    fs::write(&out_path, body)
-        .with_context(|| format!("failed to write {}", out_path.display()))?;
-    Ok(out_path)
+/// Relative path prefix from the space's `.tasks/` dir to a member project's
+/// `.tasks/` dir, with a trailing slash (empty when the two coincide). Both
+/// inputs are root-relative directory paths. Used to prefix `T-*.md` links so
+/// the space board points into each member's own dir.
+fn relative_tasks_prefix(space_path: &str, project_path: &str) -> String {
+    let from = format!("{space_path}/{TASKS_DIR}");
+    let to = format!("{project_path}/{TASKS_DIR}");
+    let fc: Vec<&str> = from.split('/').filter(|s| !s.is_empty()).collect();
+    let tc: Vec<&str> = to.split('/').filter(|s| !s.is_empty()).collect();
+    let mut i = 0;
+    while i < fc.len() && i < tc.len() && fc[i] == tc[i] {
+        i += 1;
+    }
+    let mut parts: Vec<String> = std::iter::repeat("..".to_string())
+        .take(fc.len() - i)
+        .collect();
+    parts.extend(tc[i..].iter().map(|s| s.to_string()));
+    let rel = parts.join("/");
+    if rel.is_empty() {
+        String::new()
+    } else {
+        format!("{rel}/")
+    }
 }
 
 fn read_top_n(conn: &Connection) -> Result<i64> {
@@ -158,17 +387,24 @@ fn read_top_n(conn: &Connection) -> Result<i64> {
         .map(|v| v.unwrap_or(10))
 }
 
-fn render_index(
-    project: &Project,
+/// Render the status-spine sections for one owner (project or space) into
+/// `out`. Headings are emitted at `level` (`##` for a per-project board, `###`
+/// for a group inside the space board). `list_flag` is `-P`/`-S` for the
+/// hidden-status hint command; `owner_slug` names the owner in that hint.
+/// `link_prefix` prefixes each task-file link — `Some("")` for a board that
+/// sits alongside its files, `Some("../sub/.tasks/")` for a member group in a
+/// space board, and closed statuses always render unlinked.
+fn render_status_sections(
+    out: &mut String,
+    list_flag: &str,
+    owner_slug: &str,
     status_defs: &[Status],
     by_status: &HashMap<String, Vec<TaskView>>,
     top_n: i64,
-) -> String {
-    let mut out = String::new();
-    out.push_str(&format!("# {} — Tasks\n\n", project.slug));
-    out.push_str(GENERATED_NOTE);
-    out.push_str("\n\n");
-
+    level: usize,
+    link_prefix: Option<&str>,
+) {
+    let marker = "#".repeat(level);
     let empty: Vec<TaskView> = Vec::new();
     for status in status_defs {
         let tasks = by_status.get(&status.slug).unwrap_or(&empty);
@@ -178,11 +414,10 @@ fn render_index(
         // command line — no table, no per-task files. Keeps the index
         // readable when a status (e.g. `done`) grows without bound.
         if status.is_hidden {
-            out.push_str(&format!("## {} ({})\n\n", status.name, total));
-            push_description(&mut out, status);
+            out.push_str(&format!("{marker} {} ({})\n\n", status.name, total));
+            push_description(out, status);
             out.push_str(&format!(
-                "_`kdb tasks list -P {slug} -s {status_slug}`_\n\n",
-                slug = project.slug,
+                "_`kdb tasks list {list_flag} {owner_slug} -s {status_slug}`_\n\n",
                 status_slug = status.slug,
             ));
             continue;
@@ -190,25 +425,21 @@ fn render_index(
 
         let slice = truncate_to_top_n(tasks, top_n);
         let header = if total > slice.len() {
-            format!("## {} (top {} of {})\n\n", status.name, slice.len(), total)
+            format!(
+                "{marker} {} (top {} of {})\n\n",
+                status.name,
+                slice.len(),
+                total
+            )
         } else {
-            format!("## {} ({})\n\n", status.name, total)
+            format!("{marker} {} ({})\n\n", status.name, total)
         };
         out.push_str(&header);
-        push_description(&mut out, status);
+        push_description(out, status);
         // Closed statuses don't have materialized task files, so render unlinked.
-        push_table(&mut out, slice, /* link */ !status.flag);
+        let prefix = if status.flag { None } else { link_prefix };
+        push_table(out, slice, prefix);
     }
-
-    out.push_str("## Commands\n\n");
-    out.push_str(&format!(
-        "- `kdb tasks list -P {slug}` — full list\n\
-         - `kdb tasks add \"title\" -P {slug}` — add a task\n\
-         - `kdb tasks view <id>` — view a task\n",
-        slug = project.slug,
-    ));
-
-    out
 }
 
 /// Render the status's description as an italic line beneath its
@@ -233,9 +464,9 @@ fn truncate_to_top_n(tasks: &[TaskView], top_n: i64) -> &[TaskView] {
 }
 
 /// Append a `| Task | Title | Priority |` markdown table for the
-/// tasks (or an `_(none)_` line if empty). When `link` is true, the
-/// Task cell is a markdown link to the task's materialized file.
-fn push_table(out: &mut String, tasks: &[TaskView], link: bool) {
+/// tasks (or an `_(none)_` line if empty). `link_prefix` `Some(p)` renders the
+/// Task cell as a link to `{p}T-NNNN.md`; `None` renders an unlinked code span.
+fn push_table(out: &mut String, tasks: &[TaskView], link_prefix: Option<&str>) {
     if tasks.is_empty() {
         out.push_str("_(none)_\n\n");
         return;
@@ -244,10 +475,9 @@ fn push_table(out: &mut String, tasks: &[TaskView], link: bool) {
     out.push_str("|---|---|---|\n");
     for t in tasks {
         let id = t.external_id();
-        let task_cell = if link {
-            format!("[{id}]({})", task_file_name(top_seq(t)))
-        } else {
-            format!("`{id}`")
+        let task_cell = match link_prefix {
+            Some(prefix) => format!("[{id}]({prefix}{})", task_file_name(top_seq(t))),
+            None => format!("`{id}`"),
         };
         let title = escape_md_cell(&t.task.title);
         out.push_str(&format!(
@@ -283,7 +513,7 @@ fn escape_md_cell(s: &str) -> String {
 /// Render a single-task file: heading + body + optional subtasks
 /// table. Subtasks are listed as a flat depth-first table using the
 /// dotted external ids (`KDB-0030.1`, `KDB-0030.1.2`).
-fn render_task_file(_project: &Project, t: &TaskView, subtree: &[TaskView]) -> String {
+fn render_task_file(t: &TaskView, subtree: &[TaskView]) -> String {
     let id = t.external_id();
     let mut out = String::new();
     out.push_str(&format!("# {id} — {}\n\n", t.task.title));
@@ -303,7 +533,7 @@ fn render_task_file(_project: &Project, t: &TaskView, subtree: &[TaskView]) -> S
 
     if !subtree.is_empty() {
         out.push_str(&format!("\n## Subtasks ({})\n\n", subtree.len()));
-        push_table(&mut out, subtree, /* link */ false);
+        push_table(&mut out, subtree, /* unlinked */ None);
     }
     out
 }
@@ -348,6 +578,7 @@ mod tests {
     use super::*;
     use crate::db;
     use crate::projects::{self as projects_mod, AddArgs as ProjAddArgs};
+    use crate::spaces::{self as spaces_mod, AddArgs as SpaceAddArgs};
     use crate::tasks::{self as tasks_mod, AddArgs as TaskAddArgs};
     use crate::workspace::root::ROOT_MARKER;
     use tempfile::TempDir;
@@ -357,6 +588,95 @@ mod tests {
         std::fs::create_dir(tmp.path().join(ROOT_MARKER)).unwrap();
         let conn = db::open(tmp.path()).unwrap();
         (tmp, conn)
+    }
+
+    #[test]
+    fn materialize_space_groups_owners_and_links_relatively() {
+        let (tmp, mut conn) = setup();
+        let space = spaces_mod::add(
+            &conn,
+            SpaceAddArgs {
+                slug: "acme",
+                name: Some("Acme Labs"),
+                alias: "ICE",
+                path: Some("acme"),
+                description: None,
+            },
+        )
+        .unwrap();
+        // Member project at a distinct sub-path.
+        projects_mod::add(
+            &conn,
+            ProjAddArgs {
+                slug: "globex",
+                alias: "ADR",
+                name: Some("Globex"),
+                path: "acme/clients/globex",
+                description: None,
+                space_id: Some(space.id),
+            },
+        )
+        .unwrap();
+        let globex = projects_mod::get_by_slug(&conn, "globex").unwrap().unwrap();
+
+        // A space-native task and a member-project task.
+        tasks_mod::add(
+            &mut conn,
+            TaskAddArgs {
+                project_id: None,
+                space_id: Some(space.id),
+                title: "Ship site",
+                body: None,
+                priority: Some(1),
+                cycle_id: None,
+                parent_id: None,
+                seq: None,
+                status: None,
+                order: None,
+            },
+        )
+        .unwrap();
+        tasks_mod::add(
+            &mut conn,
+            TaskAddArgs {
+                project_id: Some(globex.id),
+                space_id: None,
+                title: "Data model",
+                body: None,
+                priority: None,
+                cycle_id: None,
+                parent_id: None,
+                seq: None,
+                status: None,
+                order: None,
+            },
+        )
+        .unwrap();
+
+        let out = materialize_space(&conn, tmp.path(), "acme").unwrap();
+        assert!(out.ends_with("acme/.tasks/index.md"));
+        let body = std::fs::read_to_string(&out).unwrap();
+        assert!(body.contains("# Acme Labs — Space Board"));
+        // Status-major: one merged Backlog table across both owners, no
+        // per-project section headings.
+        assert!(body.contains("## Backlog (2)"));
+        assert!(!body.contains("## ICE ·"));
+        assert!(!body.contains("## ADR ·"));
+        assert!(body.contains("| Task | Project | Title | Priority |"));
+        // Space-native task links alongside the board; member task links into
+        // its own .tasks dir — both in the same table.
+        assert!(body.contains("[ICE-0001](T-0001.md)"));
+        assert!(body.contains("| acme |"));
+        assert!(body.contains("[ADR-0001](../clients/globex/.tasks/T-0001.md)"));
+        assert!(body.contains("| globex |"));
+
+        // Both task files actually exist where the links point.
+        assert!(tmp.path().join("acme/.tasks/T-0001.md").exists());
+        assert!(
+            tmp.path()
+                .join("acme/clients/globex/.tasks/T-0001.md")
+                .exists()
+        );
     }
 
     #[test]
@@ -378,7 +698,8 @@ mod tests {
         tasks_mod::add(
             &mut conn,
             TaskAddArgs {
-                project_id: p.id,
+                project_id: Some(p.id),
+                space_id: None,
                 title: "first",
                 body: Some("## Goal\n\nDo the thing.\n"),
                 priority: Some(1),
@@ -427,7 +748,8 @@ mod tests {
         tasks_mod::add(
             &mut conn,
             TaskAddArgs {
-                project_id: p.id,
+                project_id: Some(p.id),
+                space_id: None,
                 title: "keep",
                 body: None,
                 priority: None,
@@ -478,7 +800,8 @@ mod tests {
             tasks_mod::add(
                 &mut conn,
                 TaskAddArgs {
-                    project_id: p.id,
+                    project_id: Some(p.id),
+                    space_id: None,
                     title: &format!("t{i}"),
                     body: None,
                     priority: None,
@@ -516,7 +839,8 @@ mod tests {
         let parent = tasks_mod::add(
             &mut conn,
             TaskAddArgs {
-                project_id: p.id,
+                project_id: Some(p.id),
+                space_id: None,
                 title: "Parent",
                 body: Some("parent body"),
                 priority: None,
@@ -531,7 +855,8 @@ mod tests {
         let child = tasks_mod::add(
             &mut conn,
             TaskAddArgs {
-                project_id: p.id,
+                project_id: Some(p.id),
+                space_id: None,
                 title: "Child A",
                 body: None,
                 priority: None,
@@ -546,7 +871,8 @@ mod tests {
         tasks_mod::add(
             &mut conn,
             TaskAddArgs {
-                project_id: p.id,
+                project_id: Some(p.id),
+                space_id: None,
                 title: "Grandchild",
                 body: None,
                 priority: None,
