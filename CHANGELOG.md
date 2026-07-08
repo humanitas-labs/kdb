@@ -130,6 +130,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.0] — 2026-07-08
+
+### Added
+
+- **Prosaic composition checking** — `kdb check` now enforces the Prosaic §5.4 resolution rules for procedure references (spec: `kernel/prosaic.md`). Procedures are declared as `## <ID> :: <Name>` headings, imported with `use <ID> from <path>`, and invoked with `run <ID>`; the checker resolves both.
+  - New `src/index/prosaic.rs`: comment-stripping (`/* */`, `//`) + `use`/`run` statement extraction from `prosaic` code blocks. `use template: …` and non-procedure `run` verbs are correctly ignored.
+  - `use <ID> from <path>` errors if the path is missing or doesn't export the ID; `run <ID>` errors unless the ID is defined in the same file or imported in-block. Reported as `file:line:col unresolved reference …`, folded into the existing non-zero exit.
+  - Only prosaic blocks that are a procedure's body (inside a `## <ID> :: <Name>` section) are checked; illustrative blocks under ordinary headings are skipped.
+  - ID pattern `SOP-(?:[A-Z]+-?)?\d+` accepts the sequential `SOP-NNN` form and alias-prefixed space/project tiers (`SOP-IS-001`, `SOP-INP-001`).
+
 ## [0.37.0] — 2026-07-01
 
 ### Added

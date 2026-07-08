@@ -985,3 +985,233 @@ fn parse_markdown_extracts_kdb_root_links() {
     assert_eq!(parsed.links[0].target.anchor.as_deref(), Some("section"));
     assert!(parsed.links[0].target.root_relative);
 }
+
+// ----------------------------------------------------------------------------------
+// Prosaic composition resolution (spec §5.4)
+// ----------------------------------------------------------------------------------
+
+/// A marina-like file defining two procedures, used as a `use` import target.
+const MARINA_FIXTURE: &str = "\
+# Marina
+
+## SOP-M02 :: Entity Creation
+
+When creating an entity.
+
+```prosaic
+insert entity row
+```
+
+## SOP-M04 :: Entity Mention Registration
+
+When registering mentions.
+
+```prosaic
+insert entity_mention rows
+```
+";
+
+#[test]
+fn prosaic_valid_import_and_run_resolve() {
+    let temp = tempdir().expect("tempdir");
+    write_root_config(temp.path());
+    write_file(temp.path(), "kernel/SOP/marina.md", MARINA_FIXTURE);
+    write_file(
+        temp.path(),
+        "kernel/SOP/code.md",
+        "# Code\n\n## SOP-C09 :: Code Map\n\nWhen mapping.\n\n\
+```prosaic\n\
+use SOP-M04 from kernel/SOP/marina.md\n\
+render the map\n\
+run SOP-M04 to register mentions\n\
+```\n",
+    );
+
+    let index = VaultIndex::build(temp.path()).expect("build index");
+    let report = index.check();
+    assert!(
+        report.procedure_errors.is_empty(),
+        "expected no procedure errors, got {:?}",
+        report.procedure_errors
+    );
+}
+
+#[test]
+fn prosaic_same_file_run_needs_no_import() {
+    let temp = tempdir().expect("tempdir");
+    write_root_config(temp.path());
+    // O02 calls O07, both defined in the same file — no `use` required (§5.2).
+    write_file(
+        temp.path(),
+        "kernel/SOP/sched/cycle.md",
+        "# Cycle\n\n## SOP-O02 :: Cycle Planning\n\nWhen planning.\n\n\
+```prosaic\n\
+run SOP-O07 on the candidates → ranked set\n\
+```\n\n\
+## SOP-O07 :: Opportunity Scan\n\nWhen scanning.\n\n\
+```prosaic\n\
+inventory candidates\n\
+```\n",
+    );
+
+    let index = VaultIndex::build(temp.path()).expect("build index");
+    let report = index.check();
+    assert!(
+        report.procedure_errors.is_empty(),
+        "same-file run should resolve without import, got {:?}",
+        report.procedure_errors
+    );
+}
+
+#[test]
+fn prosaic_use_missing_path_is_reported() {
+    let temp = tempdir().expect("tempdir");
+    write_root_config(temp.path());
+    write_file(
+        temp.path(),
+        "kernel/SOP/code.md",
+        "# Code\n\n## SOP-C09 :: Code Map\n\nWhen mapping.\n\n\
+```prosaic\n\
+use SOP-M04 from kernel/SOP/nonexistent.md\n\
+run SOP-M04 to register\n\
+```\n",
+    );
+
+    let index = VaultIndex::build(temp.path()).expect("build index");
+    let report = index.check();
+    assert_eq!(report.procedure_errors.len(), 1);
+    assert!(
+        report.procedure_errors[0]
+            .reason
+            .contains("use target file not found: kernel/SOP/nonexistent.md")
+    );
+    // The `use` is on the first body line of the block (fence on line 7).
+    assert_eq!(report.procedure_errors[0].line, 8);
+}
+
+#[test]
+fn prosaic_use_path_without_symbol_is_reported() {
+    let temp = tempdir().expect("tempdir");
+    write_root_config(temp.path());
+    write_file(temp.path(), "kernel/SOP/marina.md", MARINA_FIXTURE);
+    write_file(
+        temp.path(),
+        "kernel/SOP/code.md",
+        "# Code\n\n## SOP-C09 :: Code Map\n\nWhen mapping.\n\n\
+```prosaic\n\
+use SOP-M99 from kernel/SOP/marina.md\n\
+run SOP-M99 to do a thing\n\
+```\n",
+    );
+
+    let index = VaultIndex::build(temp.path()).expect("build index");
+    let report = index.check();
+    // The `use` fails (marina.md has no SOP-M99); the `run` still resolves
+    // because SOP-M99 is imported in-block (§5.4.1).
+    assert_eq!(report.procedure_errors.len(), 1);
+    assert!(
+        report.procedure_errors[0]
+            .reason
+            .contains("does not define SOP-M99")
+    );
+}
+
+#[test]
+fn prosaic_unimported_run_is_reported() {
+    let temp = tempdir().expect("tempdir");
+    write_root_config(temp.path());
+    write_file(temp.path(), "kernel/SOP/marina.md", MARINA_FIXTURE);
+    write_file(
+        temp.path(),
+        "kernel/SOP/code.md",
+        "# Code\n\n## SOP-C09 :: Code Map\n\nWhen mapping.\n\n\
+```prosaic\n\
+run SOP-M04 to register mentions\n\
+```\n",
+    );
+
+    let index = VaultIndex::build(temp.path()).expect("build index");
+    let report = index.check();
+    assert_eq!(report.procedure_errors.len(), 1);
+    assert!(
+        report.procedure_errors[0]
+            .reason
+            .contains("no matching `use` import")
+    );
+}
+
+#[test]
+fn prosaic_illustrative_block_outside_procedure_is_skipped() {
+    let temp = tempdir().expect("tempdir");
+    write_root_config(temp.path());
+    // A spec-style file: the prosaic block sits under an ordinary heading, not a
+    // `## SOP-* ::` procedure heading, so its dangling `run` is not checked.
+    write_file(
+        temp.path(),
+        "kernel/prosaic.md",
+        "# Prosaic\n\n## 5. Composition\n\nExample of invocation:\n\n\
+```prosaic\n\
+run SOP-O07 on the candidates → ranked set\n\
+```\n",
+    );
+
+    let index = VaultIndex::build(temp.path()).expect("build index");
+    let report = index.check();
+    assert!(
+        report.procedure_errors.is_empty(),
+        "illustrative block should be skipped, got {:?}",
+        report.procedure_errors
+    );
+}
+
+#[test]
+fn prosaic_use_template_is_not_treated_as_import() {
+    let temp = tempdir().expect("tempdir");
+    write_root_config(temp.path());
+    write_file(
+        temp.path(),
+        "kernel/SOP/comms.md",
+        "# Comms\n\n## SOP-CM01 :: Workstream Progress Report\n\nWhen handing off.\n\n\
+```prosaic\n\
+use template: kernel/templates/comms/wpr.md\n\
+write the report\n\
+```\n",
+    );
+
+    let index = VaultIndex::build(temp.path()).expect("build index");
+    let report = index.check();
+    assert!(
+        report.procedure_errors.is_empty(),
+        "`use template:` is an ordinary verb, got {:?}",
+        report.procedure_errors
+    );
+}
+
+#[test]
+fn prosaic_cross_tier_ids_resolve_by_path() {
+    let temp = tempdir().expect("tempdir");
+    write_root_config(temp.path());
+    // A space-tier procedure (SOP-INP-004) imports a global one (SOP-004) by path.
+    write_file(
+        temp.path(),
+        "kernel/SOP/ops.md",
+        "# Ops\n\n## SOP-004 :: Global Thing\n\nWhen.\n\n```prosaic\ndo it\n```\n",
+    );
+    write_file(
+        temp.path(),
+        "space/SOP/local.md",
+        "# Local\n\n## SOP-INP-004 :: Local Thing\n\nWhen.\n\n\
+```prosaic\n\
+use SOP-004 from kernel/SOP/ops.md\n\
+run SOP-004 first\n\
+```\n",
+    );
+
+    let index = VaultIndex::build(temp.path()).expect("build index");
+    let report = index.check();
+    assert!(
+        report.procedure_errors.is_empty(),
+        "cross-tier use should resolve by path, got {:?}",
+        report.procedure_errors
+    );
+}

@@ -17,6 +17,7 @@
 mod code;
 pub mod deps;
 mod markdown;
+pub mod prosaic;
 pub mod refs;
 mod scanner;
 mod scope;
@@ -25,7 +26,7 @@ use anyhow::{Context, Result};
 use globset::GlobSet;
 use rayon::prelude::*;
 use serde::Serialize;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use crate::workspace::discover::discover_files;
@@ -49,57 +50,63 @@ pub use markdown::{
 
 // NOTE: index block managed by kdb fmt — do not update manually
 
-// -----------------------------------------
+// ------------------------------------------
 // projects/kdb/src/index/mod.rs
 //
-// mod code                              L17
-// pub mod deps                          L18
-// mod markdown                          L19
-// pub mod refs                          L20
-// mod scanner                           L21
-// mod scope                             L22
-// pub struct VaultIndex                L109
-// pub struct CodeIndex                 L127
-// pub struct SymbolKey                 L142
-// pub struct SymbolRef                 L157
-// pub struct WorkspaceIndex            L176
-// pub struct FileEntry                 L185
-// pub struct Heading                   L198
-// pub enum LinkKind                    L214
-// pub struct LinkTarget                L223
-// pub struct Link                      L235
-// pub struct HeadingKey                L250
-// pub struct LinkRef                   L259
-// pub struct ParsedDocument            L274
-// pub struct BrokenLink                L283
-// pub struct BrokenEmbed               L298
-// pub struct CheckReport               L311
-//   pub fn has_errors()                L322
-//   pub fn print()                     L327
-//   pub fn scoped_to()                 L391
-// fn path_is_in_check_scope()          L402
-//   pub fn build()                     L420
-//   pub fn build_for_target()          L434
-//   pub fn build_with_symbol_refs()    L451
-//   pub fn build()                     L466
-//   pub fn build_with_ignores()        L471
-//   pub fn build_for_target()          L483
-//   pub fn build_with_symbol_refs()    L498
-//   pub fn build()                     L513
-//   pub fn build_with_ignores()        L521
-//   pub fn upsert_file()               L565
-//   pub fn reload_file()               L588
-//   pub fn remove_file()               L617
-//   pub fn check()                     L625
-//   fn populate_inbound()              L692
-//   fn resolve_link()                  L745
-// enum ResolveError                    L778
-//   fn message()                       L785
-// fn discover_markdown_files()         L800
-// fn resolve_target_file()             L818
-// pub fn resolve_target_path()         L831
-// pub fn resolve_file_target()         L863
-// -----------------------------------------
+// mod code                               L17
+// pub mod deps                           L18
+// mod markdown                           L19
+// pub mod prosaic                        L20
+// pub mod refs                           L21
+// mod scanner                            L22
+// mod scope                              L23
+// pub struct VaultIndex                 L116
+// pub struct CodeIndex                  L134
+// pub struct SymbolKey                  L149
+// pub struct SymbolRef                  L164
+// pub struct WorkspaceIndex             L183
+// pub struct FileEntry                  L192
+// pub struct ProsaicBlock               L213
+// pub struct Heading                    L224
+// pub enum LinkKind                     L240
+// pub struct LinkTarget                 L249
+// pub struct Link                       L261
+// pub struct HeadingKey                 L276
+// pub struct LinkRef                    L285
+// pub struct ParsedDocument             L300
+// pub struct BrokenLink                 L311
+// pub struct BrokenEmbed                L326
+// pub struct ProcedureError             L340
+// pub struct CheckReport                L355
+//   pub fn has_errors()                 L369
+//   pub fn print()                      L376
+//   pub fn scoped_to()                  L452
+// fn path_is_in_check_scope()           L465
+//   pub fn build()                      L483
+//   pub fn build_for_target()           L497
+//   pub fn build_with_symbol_refs()     L514
+//   pub fn build()                      L529
+//   pub fn build_with_ignores()         L534
+//   pub fn build_for_target()           L546
+//   pub fn build_with_symbol_refs()     L561
+//   pub fn build()                      L576
+//   pub fn build_with_ignores()         L584
+//   pub fn upsert_file()                L629
+//   pub fn reload_file()                L653
+//   pub fn remove_file()                L683
+//   pub fn check()                      L691
+//   fn check_procedures()               L761
+//   fn resolve_use()                    L828
+//   fn populate_inbound()               L844
+//   fn resolve_link()                   L897
+// enum ResolveError                     L930
+//   fn message()                        L937
+// fn procedure_ids_in()                 L954
+// fn discover_markdown_files()          L963
+// fn resolve_target_file()              L981
+// pub fn resolve_target_path()          L994
+// pub fn resolve_file_target()         L1026
+// ------------------------------------------
 
 /// Complete index of a markdown vault.
 ///
@@ -191,6 +198,25 @@ pub struct FileEntry {
     pub headings: Vec<Heading>,
     /// All internal links found in this file (external URLs are excluded).
     pub links: Vec<Link>,
+    /// Prosaic (`prosaic`-fenced) code blocks found in this file.
+    pub prosaic_blocks: Vec<ProsaicBlock>,
+}
+
+/// A `prosaic`-fenced code block extracted from a markdown file.
+///
+/// Prosaic composition (spec §5) declares procedures as `## <ID> :: <Name>`
+/// headings and calls them with `use`/`run` inside these blocks. Only blocks
+/// that are the body of a procedure (`enclosing_procedure` is `Some`) are
+/// subject to the §5.4 resolution check — illustrative blocks in the spec or
+/// templates sit under ordinary headings and are skipped.
+#[derive(Debug, Clone)]
+pub struct ProsaicBlock {
+    /// 1-based line number of the first body line (the line after the opening fence).
+    pub start_line: usize,
+    /// Raw body text between the fences (fence delimiters excluded).
+    pub body: String,
+    /// ID of the procedure whose section contains this block, if any.
+    pub enclosing_procedure: Option<String>,
 }
 
 /// A parsed heading from a markdown file.
@@ -276,6 +302,8 @@ pub struct ParsedDocument {
     pub headings: Vec<Heading>,
     /// All internal links found in the document.
     pub links: Vec<Link>,
+    /// All `prosaic`-fenced code blocks found in the document.
+    pub prosaic_blocks: Vec<ProsaicBlock>,
 }
 
 /// A broken link detected during validation.
@@ -306,6 +334,22 @@ pub struct BrokenEmbed {
     pub reason: String,
 }
 
+/// An unresolved Prosaic composition reference (`use`/`run`) detected during
+/// validation (spec §5.4).
+#[derive(Debug, Clone)]
+pub struct ProcedureError {
+    /// File containing the reference.
+    pub source_file: PathBuf,
+    /// 1-based line number.
+    pub line: usize,
+    /// 1-based column number.
+    pub column: usize,
+    /// Raw statement text.
+    pub raw: String,
+    /// Human-readable explanation of why the reference is unresolved.
+    pub reason: String,
+}
+
 /// Results from running `kdb check` on a vault.
 #[derive(Debug, Clone, Default)]
 pub struct CheckReport {
@@ -313,14 +357,19 @@ pub struct CheckReport {
     pub broken_links: Vec<BrokenLink>,
     /// Embeds (`![[]]`) that reference files or headings that don't exist.
     pub broken_embeds: Vec<BrokenEmbed>,
+    /// Prosaic `use`/`run` references that don't resolve (spec §5.4).
+    pub procedure_errors: Vec<ProcedureError>,
     /// Files that have no inbound links from other files.
     pub orphans: Vec<PathBuf>,
 }
 
 impl CheckReport {
-    /// Returns `true` if the report contains any broken links or embeds.
+    /// Returns `true` if the report contains any broken links, embeds, or
+    /// unresolved procedure references.
     pub fn has_errors(&self) -> bool {
-        !self.broken_links.is_empty() || !self.broken_embeds.is_empty()
+        !self.broken_links.is_empty()
+            || !self.broken_embeds.is_empty()
+            || !self.procedure_errors.is_empty()
     }
 
     /// Print a human-readable summary to stdout.
@@ -346,6 +395,17 @@ impl CheckReport {
             );
         }
 
+        for error in &self.procedure_errors {
+            println!(
+                "{}:{}:{} unresolved reference {} ({})",
+                error.source_file.display(),
+                error.line,
+                error.column,
+                error.raw,
+                error.reason
+            );
+        }
+
         if list_orphans {
             for orphan in &self.orphans {
                 println!("{} orphan file (0 inbound links)", orphan.display());
@@ -363,7 +423,8 @@ impl CheckReport {
             );
         }
 
-        let error_count = self.broken_links.len() + self.broken_embeds.len();
+        let error_count =
+            self.broken_links.len() + self.broken_embeds.len() + self.procedure_errors.len();
         if error_count == 0 && self.orphans.is_empty() {
             println!("kdb check: no issues found");
             return;
@@ -393,6 +454,8 @@ impl CheckReport {
             .retain(|broken| path_is_in_check_scope(&broken.source_file, scope_rel, scope_is_dir));
         self.broken_embeds
             .retain(|broken| path_is_in_check_scope(&broken.source_file, scope_rel, scope_is_dir));
+        self.procedure_errors
+            .retain(|error| path_is_in_check_scope(&error.source_file, scope_rel, scope_is_dir));
         self.orphans
             .retain(|orphan| path_is_in_check_scope(orphan, scope_rel, scope_is_dir));
         self
@@ -538,6 +601,7 @@ impl VaultIndex {
                         abs_path,
                         headings: parsed.headings,
                         links: parsed.links,
+                        prosaic_blocks: parsed.prosaic_blocks,
                     },
                 ))
             })
@@ -576,6 +640,7 @@ impl VaultIndex {
                 abs_path,
                 headings: parsed.headings,
                 links: parsed.links,
+                prosaic_blocks: parsed.prosaic_blocks,
             },
         );
         self.populate_inbound();
@@ -608,6 +673,7 @@ impl VaultIndex {
                 abs_path,
                 headings: parsed.headings,
                 links: parsed.links,
+                prosaic_blocks: parsed.prosaic_blocks,
             },
         );
         self.populate_inbound();
@@ -667,6 +733,8 @@ impl VaultIndex {
             }
         }
 
+        self.check_procedures(&mut report);
+
         for path in self.files.keys() {
             let inbound_from_other_files = self
                 .file_inbound
@@ -685,6 +753,90 @@ impl VaultIndex {
 
         report.orphans.sort();
         report
+    }
+
+    /// Enforce the Prosaic composition resolution rules (spec §5.4) across every
+    /// procedure-body prosaic block, appending unresolved `use`/`run` references
+    /// to `report.procedure_errors`.
+    fn check_procedures(&self, report: &mut CheckReport) {
+        for (source_file, file_entry) in &self.files {
+            let own_ids = procedure_ids_in(file_entry);
+
+            for block in &file_entry.prosaic_blocks {
+                // Only procedure bodies are checked; illustrative blocks in the
+                // spec/templates sit under ordinary headings (§5.4, §5.1).
+                if block.enclosing_procedure.is_none() {
+                    continue;
+                }
+
+                let statements = prosaic::extract_statements(&block.body);
+                let imported: HashSet<&str> = statements
+                    .iter()
+                    .filter_map(|stmt| match stmt {
+                        prosaic::Statement::Use { id, .. } => Some(id.as_str()),
+                        prosaic::Statement::Run { .. } => None,
+                    })
+                    .collect();
+
+                for stmt in &statements {
+                    match stmt {
+                        prosaic::Statement::Use {
+                            id,
+                            path,
+                            line,
+                            column,
+                            raw,
+                        } => {
+                            let reason = self.resolve_use(id, path);
+                            if let Some(reason) = reason {
+                                report.procedure_errors.push(ProcedureError {
+                                    source_file: source_file.clone(),
+                                    line: block.start_line + line,
+                                    column: *column,
+                                    raw: raw.clone(),
+                                    reason,
+                                });
+                            }
+                        }
+                        prosaic::Statement::Run {
+                            id,
+                            line,
+                            column,
+                            raw,
+                        } => {
+                            if !own_ids.contains(id.as_str()) && !imported.contains(id.as_str()) {
+                                report.procedure_errors.push(ProcedureError {
+                                    source_file: source_file.clone(),
+                                    line: block.start_line + line,
+                                    column: *column,
+                                    raw: raw.clone(),
+                                    reason: format!(
+                                        "run {id}: not defined in this file and no matching `use` import in this block"
+                                    ),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Validate a single `use <id> from <path>` import: the path must resolve to
+    /// an indexed file, and that file must define a procedure with `id`. Returns
+    /// `None` when the import resolves, or a failure reason.
+    fn resolve_use(&self, id: &str, path: &str) -> Option<String> {
+        let Some(target) = normalize_rel_path(Path::new(path)) else {
+            return Some(format!("use target resolves outside root: {path}"));
+        };
+        let Some(target_entry) = self.files.get(&target) else {
+            return Some(format!("use target file not found: {path}"));
+        };
+        if procedure_ids_in(target_entry).contains(id) {
+            None
+        } else {
+            Some(format!("{path} does not define {id}"))
+        }
     }
 
     /// Walk all links and record which files and headings they point to,
@@ -796,6 +948,17 @@ impl ResolveError {
 // ---------------------------------------------------------------------------
 // File discovery
 // ---------------------------------------------------------------------------
+
+/// Collect the procedure IDs a file defines — every `## <ID> :: <Name>` heading
+/// (spec §5.1).
+fn procedure_ids_in(entry: &FileEntry) -> HashSet<String> {
+    entry
+        .headings
+        .iter()
+        .filter(|heading| heading.level == 2)
+        .filter_map(|heading| prosaic::procedure_id_from_heading(&heading.title))
+        .collect()
+}
 
 fn discover_markdown_files(root: &Path, ignore_set: &GlobSet) -> Result<Vec<PathBuf>> {
     let paths = discover_files(root, root, ignore_set)?;

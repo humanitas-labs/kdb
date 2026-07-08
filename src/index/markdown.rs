@@ -5,38 +5,41 @@ use std::sync::LazyLock;
 use tree_sitter::Node;
 use tree_sitter_md::{MarkdownParser, MarkdownTree};
 
-use super::{Heading, Link, LinkKind, LinkTarget, ParsedDocument};
+use super::prosaic::procedure_id_from_heading;
+use super::{Heading, Link, LinkKind, LinkTarget, ParsedDocument, ProsaicBlock};
 
 // ---------------------------------------------
 // projects/kdb/src/index/markdown.rs
 //
-// static WIKILINK_RE                        L42
-// static MARKDOWN_LINK_RE                   L44
-// static INLINE_CODE_RE                     L47
-// pub fn parse_markdown()                   L51
-// pub fn parse_markdown_target()            L71
-// fn parse_kdb_target()                    L121
-// pub fn parse_wikilink_target()           L158
-// pub fn slug_anchor()                     L205
-// pub fn section_line_bounds()             L236
-// pub fn section_byte_bounds()             L268
-// fn collect_headings()                    L282
-// fn collect_markdown_links()              L307
-// fn collect_wikilink_excluded_ranges()    L336
-// fn collect_wikilinks()                   L351
-// fn assign_heading_anchors()              L387
-// fn heading_level()                       L402
-// fn heading_level_from_underline()        L420
-// fn heading_title()                       L430
-// fn normalize_heading_text()              L440
-// fn child_text_by_kind()                  L483
-// fn normalize_destination()               L492
-// fn walk_markdown_tree()                  L501
-// fn is_external()                         L525
-// fn line_start_offsets()                  L535
-// fn line_col()                            L545
-// fn range_contains_offset()               L555
-// fn normalize_inline_whitespace()         L561
+// static WIKILINK_RE                        L45
+// static MARKDOWN_LINK_RE                   L47
+// static INLINE_CODE_RE                     L50
+// pub fn parse_markdown()                   L54
+// pub fn parse_markdown_target()            L83
+// fn parse_kdb_target()                    L133
+// pub fn parse_wikilink_target()           L170
+// pub fn slug_anchor()                     L217
+// pub fn section_line_bounds()             L248
+// pub fn section_byte_bounds()             L280
+// fn collect_headings()                    L294
+// fn collect_markdown_links()              L319
+// fn collect_wikilink_excluded_ranges()    L348
+// fn collect_prosaic_blocks()              L368
+// fn assign_enclosing_procedures()         L425
+// fn collect_wikilinks()                   L440
+// fn assign_heading_anchors()              L476
+// fn heading_level()                       L491
+// fn heading_level_from_underline()        L509
+// fn heading_title()                       L519
+// fn normalize_heading_text()              L529
+// fn child_text_by_kind()                  L572
+// fn normalize_destination()               L581
+// fn walk_markdown_tree()                  L590
+// fn is_external()                         L614
+// fn line_start_offsets()                  L624
+// fn line_col()                            L634
+// fn range_contains_offset()               L644
+// fn normalize_inline_whitespace()         L650
 // ---------------------------------------------
 
 static WIKILINK_RE: LazyLock<Regex> =
@@ -54,6 +57,7 @@ pub fn parse_markdown(content: &str) -> ParsedDocument {
         return ParsedDocument {
             headings: Vec::new(),
             links: Vec::new(),
+            prosaic_blocks: Vec::new(),
         };
     };
 
@@ -64,7 +68,15 @@ pub fn parse_markdown(content: &str) -> ParsedDocument {
     links.extend(collect_wikilinks(content, &line_starts, &excluded_ranges));
 
     assign_heading_anchors(&mut headings);
-    ParsedDocument { headings, links }
+
+    let mut prosaic_blocks = collect_prosaic_blocks(&tree, content, &line_starts);
+    assign_enclosing_procedures(&mut prosaic_blocks, &headings);
+
+    ParsedDocument {
+        headings,
+        links,
+        prosaic_blocks,
+    }
 }
 
 /// Parse a standard markdown link destination into a typed target.
@@ -346,6 +358,83 @@ fn collect_wikilink_excluded_ranges(tree: &MarkdownTree) -> Vec<(usize, usize)> 
     });
 
     ranges
+}
+
+/// Collect every `prosaic`-fenced code block with its body and 1-based start line.
+///
+/// Uses the parsed fence delimiters so nested/illustrative fences (e.g. a
+/// ```` ``` ````-in-```` ```` ```` example) are handled by the parser rather than
+/// a naive line scan.
+fn collect_prosaic_blocks(
+    tree: &MarkdownTree,
+    content: &str,
+    line_starts: &[usize],
+) -> Vec<ProsaicBlock> {
+    let mut blocks = Vec::new();
+
+    walk_markdown_tree(tree, |node, is_inline| {
+        if is_inline || node.kind() != "fenced_code_block" {
+            return;
+        }
+
+        let mut cursor = node.walk();
+        let delims: Vec<Node<'_>> = node
+            .children(&mut cursor)
+            .filter(|child| child.kind() == "fenced_code_block_delimiter")
+            .collect();
+        if delims.len() < 2 {
+            return; // unterminated fence
+        }
+        let open_row = delims[0].start_position().row as usize;
+        let close_row = delims[delims.len() - 1].start_position().row as usize;
+
+        // Info string is whatever follows the opening delimiter on its line.
+        let info_start = delims[0].end_byte();
+        let info_end = line_starts
+            .get(open_row + 1)
+            .map(|next| next.saturating_sub(1))
+            .unwrap_or(content.len());
+        let info = content.get(info_start..info_end).unwrap_or("").trim();
+        let lang = info.split_whitespace().next().unwrap_or("");
+        if !lang.eq_ignore_ascii_case("prosaic") {
+            return;
+        }
+
+        let body_first_row = open_row + 1;
+        let start_line = body_first_row + 1; // 1-based
+        let body = if body_first_row >= close_row {
+            String::new()
+        } else {
+            let start_byte = line_starts.get(body_first_row).copied().unwrap_or(content.len());
+            let end_byte = line_starts.get(close_row).copied().unwrap_or(content.len());
+            content.get(start_byte..end_byte).unwrap_or("").to_string()
+        };
+
+        blocks.push(ProsaicBlock {
+            start_line,
+            body,
+            enclosing_procedure: None,
+        });
+    });
+
+    blocks
+}
+
+/// For each block, record the ID of the nearest enclosing procedure heading
+/// (level ≤ 2 heading that matches `SOP-<ID> :: …`), if any.
+fn assign_enclosing_procedures(blocks: &mut [ProsaicBlock], headings: &[Heading]) {
+    for block in blocks {
+        let mut enclosing: Option<&str> = None;
+        for heading in headings {
+            if heading.line >= block.start_line {
+                break;
+            }
+            if heading.level <= 2 {
+                enclosing = Some(&heading.title);
+            }
+        }
+        block.enclosing_procedure = enclosing.and_then(procedure_id_from_heading);
+    }
 }
 
 fn collect_wikilinks(
