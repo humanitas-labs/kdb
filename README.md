@@ -1,19 +1,3 @@
----
-path: projects/kdb/README.md
-outline: |
-  • kdb                           L17
-    ◦ Overview                    L23
-      ▪ Supported languages       L31
-    ◦ Quickstart                  L39
-    ◦ Commands                    L68
-      ▪ Markdown links           L122
-      ▪ Transclusion             L131
-      ▪ Full-text search         L142
-      ▪ LSP                      L164
-    ◦ Development                L182
-    ◦ License                    L186
----
-
 # kdb
 
 A structural index for codebases. CLI and language server.
