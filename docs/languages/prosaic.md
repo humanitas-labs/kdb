@@ -1,44 +1,16 @@
 ---
 path: projects/kdb/docs/languages/prosaic.md
-outline: |
-  • Prosaic            L10
-    ◦ Token Types      L14
-    ◦ Usage            L27
-    ◦ Grammar          L42
 ---
 
 # Prosaic
 
 Prosaic is a pseudocode language for writing operational procedures and SOPs. It uses indentation-based nesting and a small set of highlighted token types.
 
-## Token Types
+**The normative language spec lives in the digimata kernel: `kernel/prosaic.md`.** The reference implementation lives in the Prosaic project, not this repo:
 
-| Token | Highlight | Examples |
-|---|---|---|
-| Comment | `@comment` | `/* ... */` |
-| Annotation | `@comment.doc` | `(facts, not feelings)` inside comments |
-| Control keyword | `@keyword` | `for each`, `if`, `in`, `break` |
-| Action verb | `@function` | `copy`, `write`, `create`, `mark`, `list`, `update`, `sort` |
-| Block label | `@label` | `scan:`, `output:`, `budget:` |
-| File path | `@string.special` | `.tasks/TODO.md`, `.cycle/{id}/plan.md` |
-| Template var | `@string.escape` | `{cycle_id}`, `{YYYY.MM.DD}` |
-| Operator | `@operator` | `→`, `=`, `×` |
+- Tree-sitter grammar: `labs/projects/prosaic/tree-sitter-prosaic/`
+- Zed highlighting: `labs/projects/prosaic/editors/zed/` (a separate `prosaic` dev extension)
 
-## Usage
+kdb keeps procedure-reference resolution for `kdb check` (`src/index/prosaic.rs`).
 
-Use `prosaic` as the language identifier in fenced code blocks:
-
-````
-```prosaic
-/* 1. Reconcile tasks */
-for each task in TODO.md:
-    if completed:
-        mark done
-    if incomplete:
-        carry over to heap
-```
-````
-
-## Grammar
-
-The tree-sitter grammar lives at `grammars/tree-sitter-prosaic/`.
+Use `prosaic` as the language identifier in fenced code blocks. See the spec's §7 (Conformance) for what the grammar currently supports versus the full spec.

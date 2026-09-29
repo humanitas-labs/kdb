@@ -1,5 +1,0 @@
-name = "Prosaic"
-grammar = "prosaic"
-path_suffixes = ["prosaic"]
-line_comments = ["// "]
-block_comment = ["/* ", " */"]
