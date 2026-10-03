@@ -1,7 +1,6 @@
 //! Drives `kdb2 lsp` over stdio JSON-RPC. Cases ported from the v1 suite
 //! (`projects/kdb/tests/lsp.rs`), minus hover, symbols, and formatting.
 //!
-//! Tests that need link resolution are `#[ignore = "needs graph"]` until the
 //! graph agent lands `src/graph/`; run them with `cargo test --test lsp -- --ignored`.
 
 mod common;
@@ -234,7 +233,6 @@ fn initialize_registers_markdown_watcher_when_supported() {
 }
 
 #[test]
-#[ignore = "needs graph"]
 fn diagnostics_publish_on_open_change_and_close() {
     let fx = Fixture::new();
     let mut s = Session::start(fx.root());
@@ -257,7 +255,6 @@ fn diagnostics_publish_on_open_change_and_close() {
 }
 
 #[test]
-#[ignore = "needs graph"]
 fn diagnostics_include_missing_heading_and_embed_errors() {
     let fx = Fixture::new();
     let mut s = Session::start(fx.root());
@@ -273,7 +270,6 @@ fn diagnostics_include_missing_heading_and_embed_errors() {
 }
 
 #[test]
-#[ignore = "needs graph"]
 fn diagnostics_refresh_other_open_docs_on_inbound_change() {
     let fx = Fixture::new();
     let mut s = Session::start(fx.root());
@@ -291,7 +287,6 @@ fn diagnostics_refresh_other_open_docs_on_inbound_change() {
 }
 
 #[test]
-#[ignore = "needs graph"]
 fn watched_file_events_refresh_graph_and_diagnostics() {
     let fx = Fixture::new();
     let mut s = Session::start(fx.root());
@@ -314,7 +309,6 @@ fn watched_file_events_refresh_graph_and_diagnostics() {
 }
 
 #[test]
-#[ignore = "needs graph"]
 fn goto_definition_resolves_markdown_and_wikilink_targets() {
     let fx = Fixture::new();
     let mut s = Session::start(fx.root());
@@ -339,7 +333,6 @@ fn goto_definition_resolves_markdown_and_wikilink_targets() {
 }
 
 #[test]
-#[ignore = "needs graph"]
 fn completion_offers_files_then_headings_from_buffer_state() {
     let fx = Fixture::new();
     let mut s = Session::start(fx.root());
@@ -377,7 +370,6 @@ fn completion_offers_files_then_headings_from_buffer_state() {
 }
 
 #[test]
-#[ignore = "needs graph"]
 fn heading_completion_reverts_to_disk_after_target_close() {
     let fx = Fixture::new();
     let mut s = Session::start(fx.root());

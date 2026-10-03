@@ -14,7 +14,6 @@ pub struct Project {
 }
 
 pub struct Space {
-    pub slug: String,
     pub name: String,
     pub alias: Option<String>,
     pub path: Option<String>,
@@ -117,8 +116,8 @@ pub fn projects(conn: &Connection, space: Option<&str>) -> Result<Vec<Project>> 
 }
 
 pub fn space_by_slug(conn: &Connection, slug: &str) -> Result<Option<Space>> {
-    conn.query_row("SELECT slug, name, alias, path FROM spaces WHERE slug = ?", [slug], |r| {
-        Ok(Space { slug: r.get(0)?, name: r.get(1)?, alias: r.get(2)?, path: r.get(3)? })
+    conn.query_row("SELECT name, alias, path FROM spaces WHERE slug = ?", [slug], |r| {
+        Ok(Space { name: r.get(0)?, alias: r.get(1)?, path: r.get(2)? })
     })
     .optional()
     .context("failed to query space")

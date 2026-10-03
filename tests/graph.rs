@@ -198,9 +198,9 @@ fn render_errors_match_v1_wording() {
         assert_eq!(out.status.code(), Some(1));
         stderr(&out)
     };
-    assert_eq!(err("a.md"), "error: failed to render a.md: include cycle detected: a.md -> b.md -> a.md\n");
-    assert_eq!(err("missing.md"), "error: failed to render missing.md: include target file not found: nonexistent.md\n");
-    assert_eq!(err("heading.md"), "error: failed to render heading.md: include target heading not found: sop.md#nonexistent\n");
+    assert_eq!(err("a.md"), "failed to render a.md: include cycle detected: a.md -> b.md -> a.md\n");
+    assert_eq!(err("missing.md"), "failed to render missing.md: include target file not found: nonexistent.md\n");
+    assert_eq!(err("heading.md"), "failed to render heading.md: include target heading not found: sop.md#nonexistent\n");
 }
 
 #[test]

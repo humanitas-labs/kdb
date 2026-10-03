@@ -4,8 +4,6 @@
 //! `run()` in its own `cli.rs`; nothing here should need to change when a
 //! domain grows.
 
-#![allow(dead_code, unused_variables)] // seed stubs; remove at parity
-
 mod db;
 mod graph;
 mod lsp;

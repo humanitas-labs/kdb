@@ -90,11 +90,6 @@ impl Doc {
     pub fn link_at(&self, line: usize, column: usize) -> Option<&Link> {
         self.links.iter().find(|l| l.line == line && l.column <= column && column < l.column + (l.span.end - l.span.start))
     }
-
-    /// Links that are embeds.
-    pub fn embeds(&self) -> impl Iterator<Item = &Link> {
-        self.links.iter().filter(|l| l.embed)
-    }
 }
 
 /// Where a link originates; used for inbound lookups and `refs`.
@@ -168,7 +163,6 @@ impl CheckReport {
 /// The in-memory link graph.
 #[derive(Debug, Clone)]
 pub struct Graph {
-    root: PathBuf,
     docs: BTreeMap<PathBuf, Doc>,
     file_inbound: HashMap<PathBuf, Vec<LinkRef>>,
     heading_inbound: HashMap<HeadingKey, Vec<LinkRef>>,
@@ -194,22 +188,13 @@ impl Graph {
                 .collect();
             workers.into_iter().flat_map(|w| w.join().expect("parse worker")).collect()
         });
-        Ok(Self::from_docs(&ws.root, parsed.into_iter().map(|d| (d.rel.clone(), d)).collect()))
+        Ok(Self::from_docs(parsed.into_iter().map(|d| (d.rel.clone(), d)).collect()))
     }
 
-    /// Build from a pre-read set of `(rel path, source)` pairs; the LSP and tests use this.
-    pub fn from_sources(root: &Path, sources: impl IntoIterator<Item = (PathBuf, String)>) -> Self {
-        Self::from_docs(root, sources.into_iter().map(|(rel, src)| (rel.clone(), parse_doc(rel, &src))).collect())
-    }
-
-    fn from_docs(root: &Path, docs: BTreeMap<PathBuf, Doc>) -> Self {
-        let mut graph = Self { root: root.to_path_buf(), docs, file_inbound: HashMap::new(), heading_inbound: HashMap::new() };
+    fn from_docs(docs: BTreeMap<PathBuf, Doc>) -> Self {
+        let mut graph = Self { docs, file_inbound: HashMap::new(), heading_inbound: HashMap::new() };
         graph.rebuild_inbound();
         graph
-    }
-
-    pub fn root(&self) -> &Path {
-        &self.root
     }
 
     /// Insert or replace one document from its source text and refresh inbound indexes.

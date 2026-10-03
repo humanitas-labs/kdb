@@ -39,8 +39,6 @@ __pycache__
 pub struct Workspace {
     /// Canonical absolute path of the directory containing `.kdb/`.
     pub root: PathBuf,
-    /// `[workspace] name` from config, if set.
-    pub name: Option<String>,
     ignores: GlobSet,
 }
 
@@ -87,11 +85,7 @@ impl Workspace {
         let mut patterns = load_ignore_file(&root)?;
         patterns.extend(config.ignore);
         let ignores = build_globset(&patterns)?;
-        Ok(Self { root, name: config.name, ignores })
-    }
-
-    pub fn config_path(&self) -> PathBuf {
-        self.root.join(ROOT_MARKER).join(CONFIG_FILE)
+        Ok(Self { root, ignores })
     }
 
     /// Absolute path for a root-relative path.
@@ -100,8 +94,14 @@ impl Workspace {
     }
 
     /// Root-relative, normalized path for an absolute path inside the workspace.
+    ///
+    /// Paths already under the canonical root are stripped directly; only
+    /// paths that do not start with it (symlinked or relative) are canonicalized.
     pub fn rel(&self, abs: &Path) -> Option<PathBuf> {
-        let abs = abs.canonicalize().ok().unwrap_or_else(|| abs.to_path_buf());
+        if let Ok(rel) = abs.strip_prefix(&self.root) {
+            return normalize_rel(rel);
+        }
+        let abs = abs.canonicalize().ok()?;
         normalize_rel(abs.strip_prefix(&self.root).ok()?)
     }
 
@@ -222,7 +222,6 @@ pub fn normalize_rel(path: &Path) -> Option<PathBuf> {
 
 #[derive(Default)]
 struct Config {
-    name: Option<String>,
     ignore: Vec<String>,
 }
 
@@ -235,11 +234,6 @@ fn load_config(root: &Path) -> Result<Config> {
     };
     let value: toml::Value =
         toml::from_str(&raw).with_context(|| format!("failed to parse {}", path.display()))?;
-    let name = value
-        .get("workspace")
-        .and_then(|w| w.get("name"))
-        .and_then(|n| n.as_str())
-        .map(str::to_owned);
     let ignore = value
         .get("index")
         .and_then(|i| i.get("ignore"))
@@ -251,7 +245,7 @@ fn load_config(root: &Path) -> Result<Config> {
                 .collect()
         })
         .unwrap_or_default();
-    Ok(Config { name, ignore })
+    Ok(Config { ignore })
 }
 
 fn load_ignore_file(root: &Path) -> Result<Vec<String>> {
@@ -310,7 +304,6 @@ mod tests {
 
         let ws = Workspace::find(&root.join("a/x.md")).unwrap();
         assert_eq!(ws.root, root);
-        assert_eq!(ws.name.as_deref(), root.file_name().and_then(|n| n.to_str()));
         let files = ws.walk_markdown().unwrap();
         assert_eq!(files, vec![PathBuf::from(".hidden/z.md"), PathBuf::from("a/x.md")]);
     }
