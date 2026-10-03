@@ -69,3 +69,4 @@ flake.lock
 .tasks/
 .internal/
 opencode.json
+.wt/
