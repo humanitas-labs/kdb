@@ -19,8 +19,8 @@ ALTER TABLE task_statuses ADD COLUMN icon TEXT;
 
 UPDATE task_statuses SET is_closed = 0 WHERE slug = 'parked';
 
-UPDATE task_statuses SET icon = 'circle.dotted'        WHERE slug = 'backlog';
-UPDATE task_statuses SET icon = 'moonphase.new.moon'   WHERE slug IN ('today', 'cycle');
-UPDATE task_statuses SET icon = 'waning.crescent'      WHERE slug = 'in_progress';
-UPDATE task_statuses SET icon = 'waning.gibbous'       WHERE slug = 'in_review';
-UPDATE task_statuses SET icon = 'green.circle'         WHERE slug = 'done';
+UPDATE task_statuses SET icon = 'backlog'        WHERE slug = 'backlog';
+UPDATE task_statuses SET icon = 'queued'   WHERE slug IN ('today', 'cycle');
+UPDATE task_statuses SET icon = 'in_progress'      WHERE slug = 'in_progress';
+UPDATE task_statuses SET icon = 'in_review'       WHERE slug = 'in_review';
+UPDATE task_statuses SET icon = 'done'         WHERE slug = 'done';

@@ -3,6 +3,7 @@
 use anyhow::{Result, bail};
 use clap::Args;
 
+use crate::db;
 use crate::workspace::Workspace;
 
 #[derive(Args, Debug)]
@@ -17,11 +18,29 @@ pub struct MaterializeArgs {
     #[arg(long)]
     pub all: bool,
     /// Cap per-task file materialization to N top-priority open tasks (defaults to `meta.top_n`)
-    #[arg(short = 'n', long)]
+    #[arg(short = 'n', long, allow_negative_numbers = true)]
     pub limit: Option<i64>,
 }
 
 pub fn run(ws: &Workspace, args: MaterializeArgs) -> Result<()> {
-    let _ = (ws, args);
-    bail!("render: not implemented")
+    let selectors = [args.all, args.project.is_some(), args.space.is_some()];
+    match selectors.iter().filter(|b| **b).count() {
+        0 => bail!("missing file argument — pass a markdown file, --project <slug>, --space <slug>, or --all"),
+        1 => {}
+        _ => bail!("--project, --space, and --all are mutually exclusive"),
+    }
+    let conn = db::open(&ws.root)?;
+    let written = if args.all {
+        super::materialize_all(&conn, &ws.root, args.limit)?
+    } else if let Some(slug) = &args.space {
+        vec![super::materialize_space(&conn, &ws.root, slug)?]
+    } else if let Some(slug) = &args.project {
+        vec![super::materialize_project(&conn, &ws.root, slug, args.limit)?]
+    } else {
+        unreachable!("selector count checked above")
+    };
+    for p in &written {
+        println!("wrote {}", p.display());
+    }
+    Ok(())
 }
