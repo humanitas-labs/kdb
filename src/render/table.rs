@@ -31,9 +31,9 @@ impl<'a> TableCtx<'a> {
         }
     }
 
-    /// The heading-sized variant, padded for the taller line box.
-    pub fn heading_icon(&self, slug: &str) -> String {
-        self.icon(slug, ".h.svg")
+    /// The icon for a status slug, for section headings.
+    pub fn status_icon(&self, slug: &str) -> String {
+        self.icon(slug, ".svg")
     }
 
     fn icon_cell(&self, task: &Task) -> String {

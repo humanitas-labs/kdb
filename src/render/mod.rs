@@ -37,26 +37,22 @@ const ICONS: &[(&str, &[u8])] = &[
 
 /// Transparent space added above each glyph, in px. Markdown viewers that
 /// top-align inline images (Zed) leave a bare icon sitting high against the
-/// text; padding the SVG pushes the glyph down. Headings get more because
-/// their line box is taller.
-const ROW_PAD: f64 = 1.5;
-const HEADING_PAD: f64 = 3.5;
+/// text; padding the SVG pushes the glyph down. Tuned for table rows and
+/// `###` section headings, which share the same line height closely enough.
+const ICON_PAD: f64 = 1.5;
 
-/// Ensure `.kdb/icons/` holds each icon twice: `<name>.svg` for table rows and
-/// `<name>.h.svg` for section headings. Writes only on a difference.
+/// Ensure `.kdb/icons/<name>.svg` holds each padded icon. Writes only on a difference.
 pub fn ensure_icons(root: &Path) -> Result<()> {
     let dir = root.join(ICONS_DIR);
     fs::create_dir_all(&dir).with_context(|| format!("failed to create {}", dir.display()))?;
     for (name, bytes) in ICONS {
         let svg = std::str::from_utf8(bytes).expect("icon SVGs are UTF-8");
-        for (file, pad) in [(format!("{name}.svg"), ROW_PAD), (format!("{name}.h.svg"), HEADING_PAD)] {
-            let content = pad_top(svg, pad);
-            let path = dir.join(file);
-            if fs::read_to_string(&path).map(|cur| cur == content).unwrap_or(false) {
-                continue;
-            }
-            fs::write(&path, content).with_context(|| format!("failed to write {}", path.display()))?;
+        let content = pad_top(svg, ICON_PAD);
+        let path = dir.join(format!("{name}.svg"));
+        if fs::read_to_string(&path).map(|cur| cur == content).unwrap_or(false) {
+            continue;
         }
+        fs::write(&path, content).with_context(|| format!("failed to write {}", path.display()))?;
     }
     Ok(())
 }
@@ -139,7 +135,7 @@ impl<'a> Renderer<'a> {
             push_table(&mut body, &ctx, slice, prefix);
         }
         body.push_str(&format!(
-            "## Commands\n\n\
+            "### Commands\n\n\
              - `kdb tasks list -P {slug}` — full list\n\
              - `kdb tasks add \"title\" -P {slug}` — add a task\n\
              - `kdb tasks view <id>` — view a task\n",
@@ -259,25 +255,25 @@ fn truncate<'t>(tasks: &'t [&'t Task], top_n: i64) -> &'t [&'t Task] {
     if top_n < 0 { tasks } else { &tasks[..(top_n as usize).min(tasks.len())] }
 }
 
-/// `## <icon> Name` — the status icon leads the heading when the status has one.
+/// `<icon> Name` — the status icon leads the heading when the status has one.
 fn heading_name(ctx: &TableCtx, status: &Status) -> String {
-    let icon = ctx.heading_icon(&status.slug);
+    let icon = ctx.status_icon(&status.slug);
     if icon.is_empty() { status.name.clone() } else { format!("{icon} {}", status.name) }
 }
 
 fn push_heading(out: &mut String, ctx: &TableCtx, status: &Status, shown: usize, total: usize) {
     let name = heading_name(ctx, status);
     if total > shown {
-        out.push_str(&format!("## {name} (top {shown} of {total})\n\n"));
+        out.push_str(&format!("### {name} (top {shown} of {total})\n\n"));
     } else {
-        out.push_str(&format!("## {name} ({total})\n\n"));
+        out.push_str(&format!("### {name} ({total})\n\n"));
     }
     push_description(out, status);
 }
 
 /// Collapsed section: heading, count, and the list command instead of a table.
 fn push_hidden(out: &mut String, ctx: &TableCtx, status: &Status, total: usize, flag: &str, owner: &str) {
-    out.push_str(&format!("## {} ({total})\n\n", heading_name(ctx, status)));
+    out.push_str(&format!("### {} ({total})\n\n", heading_name(ctx, status)));
     push_description(out, status);
     out.push_str(&format!("_`kdb tasks list {flag} {owner} -s {}`_\n\n", status.slug));
 }
