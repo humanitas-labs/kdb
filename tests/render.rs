@@ -1,4 +1,4 @@
-//! `kdb2 render -P | -S | --all` board materialization: v1 parity plus the
+//! `kdb render -P | -S | --all` board materialization: v1 parity plus the
 //! icon column (iss-0070) and the Blocked-by column (iss-0071).
 
 mod common;
@@ -8,7 +8,7 @@ use rusqlite::{Connection, params};
 
 /// Migrate the db through the binary (a no-op `--all` render), then open it.
 fn seed(ws: &TestWorkspace) -> Connection {
-    let out = ws.kdb2(&["render", "--all"]);
+    let out = ws.kdb(&["render", "--all"]);
     assert!(out.status.success(), "{}", stderr(&out));
     Connection::open(ws.path(".kdb/index.db")).unwrap()
 }
@@ -68,7 +68,7 @@ fn project_board_writes_index_and_task_files() {
     add_task(&conn, Ok(p), 2, "shipped", "done", 3);
     add_task(&conn, Ok(p), 3, "a | pipe", "in_progress", 2);
 
-    let out = ws.kdb2(&["render", "-P", "kdb"]);
+    let out = ws.kdb(&["render", "-P", "kdb"]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).ends_with("projects/kdb/.tasks/index.md\n"));
 
@@ -102,7 +102,7 @@ fn icon_path_is_relative_to_the_board() {
     add_task(&conn, Ok(p), 1, "root task", "today", 3);
     let deep = add_project(&conn, "deep", "DEEP", "a/b/c/d", None);
     add_task(&conn, Ok(deep), 1, "deep task", "cycle", 3);
-    assert!(ws.kdb2(&["render", "--all"]).status.success());
+    assert!(ws.kdb(&["render", "--all"]).status.success());
     assert!(ws.read(".tasks/index.md").contains("| ![](../.kdb/icons/queued.svg) | [META-0001]"));
     assert!(ws.read("a/b/c/d/.tasks/index.md").contains("| ![](../../../../../.kdb/icons/queued.svg) | [DEEP-0001]"));
 }
@@ -114,7 +114,7 @@ fn status_without_icon_renders_empty_cell() {
     conn.execute("INSERT INTO task_statuses (slug, name, sort_order) VALUES ('review', 'Review', 35)", []).unwrap();
     let p = add_project(&conn, "kdb", "KDB", "projects/kdb", None);
     add_task(&conn, Ok(p), 1, "waiting", "review", 3);
-    assert!(ws.kdb2(&["render", "-P", "kdb"]).status.success());
+    assert!(ws.kdb(&["render", "-P", "kdb"]).status.success());
     let index = ws.read("projects/kdb/.tasks/index.md");
     assert!(index.contains("## Review (1)\n\n| | Task | Title | Blocked by | Priority |\n|---|---|---|---|---|\n|  | [KDB-0001](T-0001.md) | waiting |  | 3 |\n"));
 }
@@ -139,7 +139,7 @@ fn blocked_by_column_and_frontmatter() {
     // A closed dependent is never blocked.
     block(&conn, c, d);
 
-    assert!(ws.kdb2(&["render", "-P", "kdb"]).status.success());
+    assert!(ws.kdb(&["render", "-P", "kdb"]).status.success());
     let index = ws.read("projects/kdb/.tasks/index.md");
     assert!(index.contains("| [KDB-0001](T-0001.md) | a | KDB-0002, THR-0007 | 3 |\n"), "{index}");
     let task = ws.read("projects/kdb/.tasks/T-0001.md");
@@ -150,7 +150,7 @@ fn blocked_by_column_and_frontmatter() {
 
     // Resolving the blockers clears the column and the frontmatter.
     conn.execute("UPDATE tasks SET status = 'done' WHERE id IN (?1, ?2)", params![b, d]).unwrap();
-    assert!(ws.kdb2(&["render", "-P", "kdb"]).status.success());
+    assert!(ws.kdb(&["render", "-P", "kdb"]).status.success());
     assert!(ws.read("projects/kdb/.tasks/index.md").contains("| [KDB-0001](T-0001.md) | a |  | 3 |\n"));
     assert!(ws.read("projects/kdb/.tasks/T-0001.md").starts_with("# KDB-0001 — a\n"));
 }
@@ -165,7 +165,7 @@ fn space_board_merges_owners_and_links_relatively() {
     add_task(&conn, Ok(adrata), 1, "Data model", "in_progress", 3);
     add_task(&conn, Ok(adrata), 2, "Later", "backlog", 3);
 
-    let out = ws.kdb2(&["render", "-S", "iceberg"]);
+    let out = ws.kdb(&["render", "-S", "iceberg"]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).ends_with("labs/.tasks/index.md\n"));
     let body = ws.read("labs/.tasks/index.md");
@@ -186,10 +186,10 @@ fn space_board_requires_path_and_alias() {
     let ws = TestWorkspace::new();
     let conn = seed(&ws);
     conn.execute("INSERT INTO spaces (slug, name) VALUES ('bare', 'Bare')", []).unwrap();
-    let out = ws.kdb2(&["render", "-S", "bare"]);
+    let out = ws.kdb(&["render", "-S", "bare"]);
     assert!(!out.status.success());
     assert!(stderr(&out).contains("space bare has no path"));
-    assert!(stderr(&ws.kdb2(&["render", "-S", "nope"])).contains("space not found: nope"));
+    assert!(stderr(&ws.kdb(&["render", "-S", "nope"])).contains("space not found: nope"));
 }
 
 #[test]
@@ -202,7 +202,7 @@ fn stale_task_files_are_cleaned() {
     ws.write("projects/kdb/.tasks/README.md", "keep me");
     ws.write("projects/kdb/.tasks/TODO.md", "user notes");
 
-    assert!(ws.kdb2(&["render", "-P", "kdb"]).status.success());
+    assert!(ws.kdb(&["render", "-P", "kdb"]).status.success());
     assert!(!ws.path("projects/kdb/.tasks/T-9999.md").exists());
     assert!(ws.path("projects/kdb/.tasks/T-0001.md").exists());
     assert!(ws.path("projects/kdb/.tasks/README.md").exists());
@@ -218,17 +218,17 @@ fn top_n_truncates_and_limit_overrides() {
     for i in 1..=5 {
         add_task(&conn, Ok(p), i, &format!("t{i}"), "backlog", 3);
     }
-    assert!(ws.kdb2(&["render", "-P", "kdb"]).status.success());
+    assert!(ws.kdb(&["render", "-P", "kdb"]).status.success());
     assert!(ws.read("projects/kdb/.tasks/index.md").contains("## Backlog (top 2 of 5)\n"));
     assert!(ws.path("projects/kdb/.tasks/T-0002.md").exists());
     assert!(!ws.path("projects/kdb/.tasks/T-0003.md").exists());
 
-    assert!(ws.kdb2(&["render", "-P", "kdb", "-n", "3"]).status.success());
+    assert!(ws.kdb(&["render", "-P", "kdb", "-n", "3"]).status.success());
     assert!(ws.read("projects/kdb/.tasks/index.md").contains("## Backlog (top 3 of 5)\n"));
     assert!(ws.path("projects/kdb/.tasks/T-0003.md").exists());
 
     // Negative means unlimited.
-    assert!(ws.kdb2(&["render", "-P", "kdb", "-n", "-1"]).status.success());
+    assert!(ws.kdb(&["render", "-P", "kdb", "-n", "-1"]).status.success());
     assert!(ws.read("projects/kdb/.tasks/index.md").contains("## Backlog (5)\n"));
     assert!(ws.path("projects/kdb/.tasks/T-0005.md").exists());
 }
@@ -244,7 +244,7 @@ fn subtasks_render_in_parent_file_not_index() {
     add_child(&conn, p, child, 1, "Grandchild");
     add_child(&conn, p, parent, 2, "Child B");
 
-    assert!(ws.kdb2(&["render", "-P", "kdb"]).status.success());
+    assert!(ws.kdb(&["render", "-P", "kdb"]).status.success());
     let index = ws.read("projects/kdb/.tasks/index.md");
     assert!(index.contains("KDB-0001") && index.contains("## Backlog (1)\n"));
     assert!(!index.contains("Child A") && !index.contains("Grandchild"));
@@ -262,7 +262,7 @@ fn all_renders_non_archived_projects() {
     add_project(&conn, "live", "LIVE", "projects/live", None);
     let old = add_project(&conn, "old", "OLD", "projects/old", None);
     conn.execute("UPDATE projects SET status = 'archived' WHERE id = ?1", [old]).unwrap();
-    let out = ws.kdb2(&["render", "--all"]);
+    let out = ws.kdb(&["render", "--all"]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert_eq!(stdout(&out).lines().count(), 1);
     assert!(ws.path("projects/live/.tasks/index.md").exists());
@@ -272,13 +272,13 @@ fn all_renders_non_archived_projects() {
 #[test]
 fn selector_errors() {
     let ws = TestWorkspace::new();
-    let out = ws.kdb2(&["render"]);
+    let out = ws.kdb(&["render"]);
     assert!(!out.status.success());
     assert!(stderr(&out).contains("missing file argument"));
-    let out = ws.kdb2(&["render", "-P", "a", "--all"]);
+    let out = ws.kdb(&["render", "-P", "a", "--all"]);
     assert!(!out.status.success());
     assert!(stderr(&out).contains("mutually exclusive"));
-    let out = ws.kdb2(&["render", "-P", "nope"]);
+    let out = ws.kdb(&["render", "-P", "nope"]);
     assert!(!out.status.success());
     assert!(stderr(&out).contains("project not found: nope"));
 }

@@ -643,7 +643,7 @@ dependencies = [
 
 [[package]]
 name = "kdb"
-version = "2.0.0-dev"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "chrono",

@@ -1,4 +1,4 @@
-//! kdb2 — markdown link graph, task tracker, and LSP for a knowledge workspace.
+//! kdb — markdown link graph, task tracker, and LSP for a knowledge workspace.
 //!
 //! This file is dispatch only. Each domain owns its clap argument types and a
 //! `run()` in its own `cli.rs`; nothing here should need to change when a
@@ -19,7 +19,7 @@ use clap::{Args, Parser, Subcommand};
 use workspace::Workspace;
 
 #[derive(Parser)]
-#[command(name = "kdb2", version, about = "Markdown link graph, task tracker, and LSP for a knowledge workspace")]
+#[command(name = "kdb", version, about = "Markdown link graph, task tracker, and LSP for a knowledge workspace")]
 struct Cli {
     #[command(subcommand)]
     command: Command,

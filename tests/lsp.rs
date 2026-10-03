@@ -1,4 +1,4 @@
-//! Drives `kdb2 lsp` over stdio JSON-RPC. Cases ported from the v1 suite
+//! Drives `kdb lsp` over stdio JSON-RPC. Cases ported from the v1 suite
 //! (`projects/kdb/tests/lsp.rs`), minus hover, symbols, and formatting.
 //!
 //! graph agent lands `src/graph/`; run them with `cargo test --test lsp -- --ignored`.
@@ -50,13 +50,13 @@ struct Session {
 
 impl Session {
     fn start(root: &Path) -> Self {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_kdb2"))
+        let mut child = Command::new(env!("CARGO_BIN_EXE_kdb"))
             .args(["lsp", &root.to_string_lossy()])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
             .spawn()
-            .expect("spawn kdb2 lsp");
+            .expect("spawn kdb lsp");
         let stdin = child.stdin.take().unwrap();
         let stdout = child.stdout.take().unwrap();
         let (tx, rx) = mpsc::channel();

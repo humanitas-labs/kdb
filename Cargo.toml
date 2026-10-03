@@ -1,13 +1,12 @@
 [package]
 name = "kdb"
-version = "2.0.0-dev"
+version = "2.0.0"
 edition = "2024"
 description = "Markdown link graph, task tracker, and LSP for a knowledge workspace"
 license = "MIT"
 
-# Installed as `kdb2` until parity with the v1 `kdb` binary; rename at merge.
 [[bin]]
-name = "kdb2"
+name = "kdb"
 path = "src/main.rs"
 
 [dependencies]

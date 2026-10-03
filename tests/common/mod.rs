@@ -1,4 +1,4 @@
-//! Shared integration-test helpers: a temp workspace and a `kdb2` runner.
+//! Shared integration-test helpers: a temp workspace and a `kdb` runner.
 #![allow(dead_code)]
 
 use std::fs;
@@ -40,18 +40,18 @@ impl TestWorkspace {
         self.root.join(rel)
     }
 
-    /// Run `kdb2 <args>` with the workspace root as cwd.
-    pub fn kdb2(&self, args: &[&str]) -> Output {
-        self.kdb2_in(&self.root, args)
+    /// Run `kdb <args>` with the workspace root as cwd.
+    pub fn kdb(&self, args: &[&str]) -> Output {
+        self.kdb_in(&self.root, args)
     }
 
-    /// Run `kdb2 <args>` from a specific cwd inside the workspace.
-    pub fn kdb2_in(&self, cwd: &Path, args: &[&str]) -> Output {
-        Command::new(env!("CARGO_BIN_EXE_kdb2"))
+    /// Run `kdb <args>` from a specific cwd inside the workspace.
+    pub fn kdb_in(&self, cwd: &Path, args: &[&str]) -> Output {
+        Command::new(env!("CARGO_BIN_EXE_kdb"))
             .args(args)
             .current_dir(cwd)
             .output()
-            .expect("run kdb2")
+            .expect("run kdb")
     }
 
     /// Open the workspace database (creating it with the full schema).
@@ -60,7 +60,7 @@ impl TestWorkspace {
         let conn = rusqlite::Connection::open(&path).unwrap();
         // Schema is owned by the binary; run a no-op command to create it.
         drop(conn);
-        let _ = self.kdb2(&["statuses", "list"]);
+        let _ = self.kdb(&["statuses", "list"]);
         rusqlite::Connection::open(&path).unwrap()
     }
 }

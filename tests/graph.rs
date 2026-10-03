@@ -1,12 +1,12 @@
 //! Markdown graph parity tests, ported from v1 `tests/index.rs` and `tests/render.rs`,
-//! exercised through the `kdb2` binary (`check --orphans`, `refs --json`, `outline --json`, `render`).
+//! exercised through the `kdb` binary (`check --orphans`, `refs --json`, `outline --json`, `render`).
 mod common;
 use common::*;
 
 use serde_json::Value;
 
 fn check(ws: &TestWorkspace) -> (i32, String) {
-    let out = ws.kdb2(&["check", "--orphans"]);
+    let out = ws.kdb(&["check", "--orphans"]);
     (out.status.code().unwrap_or(-1), stdout(&out))
 }
 
@@ -35,7 +35,7 @@ fn outline_rows_dedup_anchors_and_normalize_titles() {
         "p.md",
         "---\ntitle: x\n---\n\n# Same\n## Same\n### Same\n## The `useState` Hook\n## See [Overview](overview.md)\n## What's New in v2.0?\n## [[a/b#c|Alias]] and [[#local]]\n## !!!\n\nSetext\n======\n",
     );
-    let out = ws.kdb2(&["outline", "--json", "p.md"]);
+    let out = ws.kdb(&["outline", "--json", "p.md"]);
     assert!(out.status.success(), "{}", stderr(&out));
     let rows: Vec<Value> = serde_json::from_str(&stdout(&out)).unwrap();
     let got: Vec<(String, String, u64, u64)> = rows
@@ -127,7 +127,7 @@ fn orphans_and_inbound_follow_v1_rules() {
     assert_eq!(code, 0);
     assert_eq!(out, "c.md orphan file (0 inbound links)\nself.md orphan file (0 inbound links)\n2 warnings\n");
 
-    let out = ws.kdb2(&["refs", "b.md#target", "--json"]);
+    let out = ws.kdb(&["refs", "b.md#target", "--json"]);
     let rows: Vec<Value> = serde_json::from_str(&stdout(&out)).unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0]["source_file"], "a.md");
@@ -135,7 +135,7 @@ fn orphans_and_inbound_follow_v1_rules() {
     assert_eq!(rows[0]["column"], 1);
     assert_eq!(rows[0]["raw"], "b.md#Target");
 
-    let out = ws.kdb2(&["refs", "empty.md", "--count"]);
+    let out = ws.kdb(&["refs", "empty.md", "--count"]);
     assert_eq!(stdout(&out).trim(), "2");
 }
 
@@ -173,7 +173,7 @@ fn render_resolves_embeds_recursively() {
         "start\n![[sop.md#Setup]]\nmiddle\n![[kdb://lib/snippet.md]]\n![[glossary]]\nsee ![[c.md]] inline\n![[a.md|alias]]\n```markdown\n![[nonexistent.md]]\n```\nend\n",
     );
     let r = |f: &str| {
-        let out = ws.kdb2(&["render", f]);
+        let out = ws.kdb(&["render", f]);
         assert!(out.status.success(), "{}", stderr(&out));
         stdout(&out)
     };
@@ -194,7 +194,7 @@ fn render_errors_match_v1_wording() {
     ws.write("sop.md", "# SOP\n\n## Setup\n");
     ws.write("heading.md", "![[sop.md#nonexistent]]\n");
     let err = |f: &str| {
-        let out = ws.kdb2(&["render", f]);
+        let out = ws.kdb(&["render", f]);
         assert_eq!(out.status.code(), Some(1));
         stderr(&out)
     };
