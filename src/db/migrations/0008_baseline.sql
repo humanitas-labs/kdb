@@ -64,11 +64,13 @@ CREATE TABLE spaces (
   CHECK (alias IS NULL OR (alias = UPPER(alias)
          AND LENGTH(alias) BETWEEN 2 AND 6
          AND alias GLOB '[A-Z][A-Z0-9]*')));
+
 CREATE TABLE task_labels (
   task_id  INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   label_id INTEGER NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
   PRIMARY KEY (task_id, label_id)
 );
+
 CREATE TABLE task_statuses (
   slug        TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
@@ -77,6 +79,7 @@ CREATE TABLE task_statuses (
   sort_order  INTEGER NOT NULL DEFAULT 0
 , description TEXT, is_hidden INTEGER NOT NULL DEFAULT 0
   CHECK (is_hidden IN (0, 1)));
+
 CREATE TABLE "tasks" (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   project_id  INTEGER REFERENCES projects(id),
@@ -100,6 +103,7 @@ CREATE TABLE "tasks" (
   CHECK ((parent_id IS NULL AND seq IS NOT NULL AND child_seq IS NULL)
       OR (parent_id IS NOT NULL AND seq IS NULL AND child_seq IS NOT NULL))
 );
+
 CREATE INDEX idx_projects_space ON projects(space_id);
 CREATE UNIQUE INDEX idx_spaces_alias ON spaces(alias) WHERE alias IS NOT NULL;
 CREATE UNIQUE INDEX idx_tasks_parent_childseq
@@ -114,6 +118,7 @@ CREATE UNIQUE INDEX idx_tasks_space_seq
   ON tasks(space_id, seq)   WHERE space_id   IS NOT NULL;
 CREATE INDEX idx_tasks_status_pri
   ON tasks(project_id, status, priority, updated_at);
+
 CREATE TRIGGER projects_alias_no_space_clash_ins
   BEFORE INSERT ON projects
   WHEN EXISTS (SELECT 1 FROM spaces WHERE alias = NEW.alias)

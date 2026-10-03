@@ -62,10 +62,10 @@ fn projects_add_list_show_edit() {
 #[test]
 fn spaces_group_projects_and_own_tasks() {
     let ws = with_kdb();
-    ok(ws.kdb2(&["spaces", "add", "ice", "--alias", "ICE", "-n", "Iceberg"]));
+    ok(ws.kdb2(&["spaces", "add", "ice", "--alias", "ICE", "-n", "Iceberg", "--path", "ice"]));
     ok(ws.kdb2(&["projects", "edit", "kdb", "--space", "ice"]));
     let list = ok(ws.kdb2(&["spaces", "list"]));
-    assert_eq!(list, "slug  alias  name     status  projects  path\nice   ICE    Iceberg  active         1  -\n");
+    assert_eq!(list, "slug  alias  name     status  projects  path\nice   ICE    Iceberg  active         1  ice\n");
     let show = ok(ws.kdb2(&["spaces", "show", "ice"]));
     assert!(show.contains("projects:    1\n"));
     assert!(show.contains("\nprojects:\nslug  alias"));
@@ -340,19 +340,19 @@ fn labels_add_list_show_edit() {
 fn statuses_list_add_edit_rm_with_icons() {
     let ws = TestWorkspace::new();
     let list = ok(ws.kdb2(&["statuses", "list", "--tasks"]));
-    assert!(list.starts_with("slug         name         closed  hidden  icon                color\nin_progress  In Progress  no      no      waning.crescent     \n"), "{list}");
-    assert!(list.contains("parked       Parked       no      yes                         \n"));
+    assert!(list.starts_with("slug         name         closed  hidden  icon         color\nin_progress  In Progress  no      no      in_progress  \n"), "{list}");
+    assert!(list.contains("parked       Parked       no      yes                  \n"));
     assert_eq!(
         ok(ws.kdb2(&["statuses", "list", "--projects"])),
         "slug      name      archived  hidden  color\nactive    Active    no        no      \npaused    Paused    no        no      \narchived  Archived  yes       no      \n"
     );
     assert_eq!(
-        ok(ws.kdb2(&["statuses", "add", "in_review", "--tasks", "-n", "In Review", "--icon", "waning.gibbous", "--order", "35", "-c", "#112233"])),
+        ok(ws.kdb2(&["statuses", "add", "in_review", "--tasks", "-n", "In Review", "--icon", "in_review", "--order", "35", "-c", "#112233"])),
         "added status in_review\n"
     );
     let show = ok(ws.kdb2(&["statuses", "show", "in_review", "--tasks"]));
-    assert_eq!(show, "slug:        in_review\nname:        In Review\nclosed:      no\nhidden:      no\nsort_order:  35\ncolor:       #112233\nicon:        waning.gibbous\n");
-    assert_eq!(json(ws.kdb2(&["statuses", "show", "in_review", "--tasks", "--json"]))["icon"], "waning.gibbous");
+    assert_eq!(show, "slug:        in_review\nname:        In Review\nclosed:      no\nhidden:      no\nsort_order:  35\ncolor:       #112233\nicon:        in_review\n");
+    assert_eq!(json(ws.kdb2(&["statuses", "show", "in_review", "--tasks", "--json"]))["icon"], "in_review");
     assert_eq!(ok(ws.kdb2(&["statuses", "edit", "in_review", "--tasks", "--icon", "", "--closed", "--hidden", "1"])), "updated status in_review\n");
     let j = json(ws.kdb2(&["statuses", "show", "in_review", "--tasks", "--json"]));
     assert!(j.get("icon").is_none() && j["flag"] == true && j["is_hidden"] == true, "{j}");

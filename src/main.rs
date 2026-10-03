@@ -75,7 +75,7 @@ struct RenderArgs {
 
 fn main() {
     if let Err(err) = run() {
-        eprintln!("error: {err:#}");
+        eprintln!("{err:#}");
         std::process::exit(1);
     }
 }

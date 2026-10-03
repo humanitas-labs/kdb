@@ -676,6 +676,7 @@ pub fn tasks(ws: &Workspace, args: TasksArgs) -> Result<()> {
             for raw in &after {
                 deps::add(&conn, view.task.id, task_by_id(&conn, raw)?.task.id, "blocks")?;
             }
+            materialize_for(&conn, ws, &view)?;
             println!("added task {}", view.external_id());
             Ok(())
         }
@@ -693,6 +694,7 @@ pub fn tasks(ws: &Workspace, args: TasksArgs) -> Result<()> {
                 _ => MoveTarget::Bottom,
             };
             let view = tasks::move_task(&conn, &parsed, target)?;
+            materialize_for(&conn, ws, &view)?;
             println!("moved {} (order={})", view.external_id(), view.task.order);
             Ok(())
         }
@@ -712,6 +714,7 @@ pub fn tasks(ws: &Workspace, args: TasksArgs) -> Result<()> {
             if let Some(s) = status.as_deref() {
                 view = set_status(&conn, &parsed, s)?;
             }
+            materialize_for(&conn, ws, &view)?;
             println!("updated task {}", view.external_id());
             Ok(())
         }
@@ -739,15 +742,22 @@ pub fn tasks(ws: &Workspace, args: TasksArgs) -> Result<()> {
         }
         TasksCmd::Delete { id, hard } => {
             let parsed = TaskId::parse(&id)?;
-            if hard {
-                println!("hard-deleted {}", tasks::hard_delete(&mut conn, &parsed)?.external_id());
+            let view = if hard {
+                let view = tasks::hard_delete(&mut conn, &parsed)?;
+                println!("hard-deleted {}", view.external_id());
+                view
             } else {
-                println!("deleted {}", tasks::soft_delete(&mut conn, &parsed)?.external_id());
-            }
+                let view = tasks::soft_delete(&mut conn, &parsed)?;
+                println!("deleted {}", view.external_id());
+                view
+            };
+            materialize_for(&conn, ws, &view)?;
             Ok(())
         }
         TasksCmd::Restore { id } => {
-            println!("restored {}", tasks::restore(&mut conn, &TaskId::parse(&id)?)?.external_id());
+            let view = tasks::restore(&mut conn, &TaskId::parse(&id)?)?;
+            materialize_for(&conn, ws, &view)?;
+            println!("restored {}", view.external_id());
             Ok(())
         }
         TasksCmd::Purge { project, status, deleted, dry_run } => {
@@ -763,17 +773,27 @@ pub fn tasks(ws: &Workspace, args: TasksArgs) -> Result<()> {
             for m in &matches {
                 println!("  {}  {}", m.external_id(), m.task.title);
             }
+            if !dry_run {
+                // Re-materialize each distinct owner board once.
+                let mut seen = std::collections::HashSet::new();
+                for m in &matches {
+                    if seen.insert((m.task.project_id, m.task.space_id)) {
+                        materialize_for(&conn, ws, m)?;
+                    }
+                }
+            }
             Ok(())
         }
-        TasksCmd::Done { id } => transition(&conn, &id, "done"),
-        TasksCmd::Park { id } => transition(&conn, &id, "parked"),
-        TasksCmd::Reopen { id } => transition(&conn, &id, "backlog"),
+        TasksCmd::Done { id } => transition(&conn, ws, &id, "done"),
+        TasksCmd::Park { id } => transition(&conn, ws, &id, "parked"),
+        TasksCmd::Reopen { id } => transition(&conn, ws, &id, "backlog"),
         TasksCmd::Label { action } => match action {
             TaskLabelCmd::Add { id, labels: slugs } => {
                 let view = task_by_id(&conn, &id)?;
                 for slug in &slugs {
                     labels::attach(&conn, view.task.id, labels::upsert(&conn, slug)?.id)?;
                 }
+                materialize_for(&conn, ws, &view)?;
                 println!("attached {} label(s) to {}", slugs.len(), view.external_id());
                 Ok(())
             }
@@ -785,6 +805,7 @@ pub fn tasks(ws: &Workspace, args: TasksArgs) -> Result<()> {
                         removed += usize::from(labels::detach(&conn, view.task.id, l.id)?);
                     }
                 }
+                materialize_for(&conn, ws, &view)?;
                 println!("detached {removed} label(s) from {}", view.external_id());
                 Ok(())
             }
@@ -795,6 +816,7 @@ pub fn tasks(ws: &Workspace, args: TasksArgs) -> Result<()> {
                 for raw in &blockers {
                     deps::add(&conn, view.task.id, task_by_id(&conn, raw)?.task.id, &kind)?;
                 }
+                materialize_for(&conn, ws, &view)?;
                 println!("{} now depends on {} ({kind})", view.external_id(), blockers.len());
                 Ok(())
             }
@@ -804,6 +826,7 @@ pub fn tasks(ws: &Workspace, args: TasksArgs) -> Result<()> {
                 for raw in &blockers {
                     removed += usize::from(deps::remove(&conn, view.task.id, task_by_id(&conn, raw)?.task.id)?);
                 }
+                materialize_for(&conn, ws, &view)?;
                 println!("removed {removed} dependency(ies) from {}", view.external_id());
                 Ok(())
             }
@@ -832,6 +855,16 @@ pub fn tasks(ws: &Workspace, args: TasksArgs) -> Result<()> {
     }
 }
 
+/// Re-render the board of the task's owner (project or space) after a mutation, as v1 did.
+fn materialize_for(conn: &Connection, ws: &Workspace, view: &TaskView) -> Result<()> {
+    if view.task.space_id.is_some() {
+        crate::render::materialize_space(conn, &ws.root, &view.project_slug)?;
+    } else {
+        crate::render::materialize_project(conn, &ws.root, &view.project_slug, None)?;
+    }
+    Ok(())
+}
+
 /// Status change that reports the dependents it released (iss-0071).
 fn set_status(conn: &Connection, id: &TaskId, status: &str) -> Result<TaskView> {
     let before = tasks::require(conn, id)?;
@@ -852,8 +885,9 @@ fn set_status(conn: &Connection, id: &TaskId, status: &str) -> Result<TaskView> 
     Ok(view)
 }
 
-fn transition(conn: &Connection, id: &str, status: &str) -> Result<()> {
+fn transition(conn: &Connection, ws: &Workspace, id: &str, status: &str) -> Result<()> {
     let view = set_status(conn, &TaskId::parse(id)?, status)?;
+    materialize_for(conn, ws, &view)?;
     println!("{} -> {}", view.external_id(), view.task.status);
     Ok(())
 }
