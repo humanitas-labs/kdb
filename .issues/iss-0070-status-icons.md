@@ -15,7 +15,7 @@ labels:
 
 ## Design
 
-Icons are SVG files in [docs/icons/](../docs/icons/), copied into `.kdb/icons/` on `kdb init` (and on first render if missing). The rendered table gets a leading icon column referencing them by relative path, e.g. `![](../.kdb/icons/in_progress.svg)`. Reference layout: [docs/icons/reference.png](../docs/icons/reference.png).
+Icons are SVG files in [docs/assets/](../docs/assets/), copied into `.kdb/icons/` on `kdb init` (and on first render if missing). The rendered table gets a leading icon column referencing them by relative path, e.g. `![](../.kdb/icons/in_progress.svg)`. Reference layout: [docs/assets/reference.png](../docs/assets/reference.png).
 
 | Status | Icon | File |
 |---|---|---|
