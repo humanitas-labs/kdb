@@ -19,16 +19,13 @@ These are the things kdb is opinionated about.
 
 ## On disk
 
-A kdb workspace is just a folder on disk. Every byte kdb writes into it is visible to you: a SQLite index in `.kdb/`, cycle files in `.cycles/`, materialized tasks in each project's `.tasks/`, and your own notes wherever you put them.
+A kdb workspace is just a folder on disk. Every byte kdb writes into it is visible to you: a SQLite index in `.kdb/` with the status icons beside it, materialized tasks in each project's `.tasks/`, and your own notes wherever you put them.
 
 ```
 workspace/
 ├── .kdb/
-│   └── index.db                  # SQLite: projects, tasks, cycles, labels
-├── .cycles/
-│   ├── index.md                  # rollup of every cycle
-│   ├── C-14.md                   # active
-│   └── C-13.md
+│   ├── index.db                  # SQLite: projects, tasks, cycles, labels
+│   └── icons/                    # status icons used by the rendered boards
 ├── projects/
 │   ├── kdb/
 │   │   ├── .tasks/
