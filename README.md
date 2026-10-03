@@ -7,6 +7,27 @@ cargo install --path .
 kdb init
 ```
 
+## Commands
+
+```
+kdb projects add <slug> --alias <AL> --path <dir>   # register a project; its tasks get ids like HRM-0012
+kdb tasks add "<title>" [-p 1-5] [-c <cycle>]       # add a task
+kdb tasks add "<title>" --after <id>                # add a task that waits on another
+kdb tasks list [-P <project>] [--blocked | --ready]
+kdb tasks ready                                     # what can start now
+kdb tasks done <id>                                 # close it and print what it unblocked
+kdb tasks deps add | rm | show <id> ...
+kdb render -P <project>                             # write the project's .tasks/ board
+
+kdb check                                           # broken links and embeds, orphan files
+kdb outline <file>                                  # heading outline
+kdb refs <file#heading>                             # who links here
+kdb render <file>                                   # resolve ![[embeds]] to stdout
+kdb lsp                                             # the same checks in your editor
+```
+
+Tasks can depend on other tasks. A task with an open blocker is blocked, its subtasks are blocked with it, and closing the blocker releases it. Boards show each task's status icon and what it is waiting on.
+
 ## Tasks
 
 ```
