@@ -93,11 +93,11 @@ impl<'a> Renderer<'a> {
         for status in &self.statuses {
             let tasks = by_status.get(status.slug.as_str()).unwrap_or(&empty);
             if status.is_hidden {
-                push_hidden(&mut body, status, tasks.len(), "-P", &project.slug);
+                push_hidden(&mut body, &ctx, status, tasks.len(), "-P", &project.slug);
                 continue;
             }
             let slice = truncate(tasks, top_n);
-            push_heading(&mut body, status, slice.len(), tasks.len());
+            push_heading(&mut body, &ctx, status, slice.len(), tasks.len());
             let prefix = if status.is_closed { None } else { Some("") };
             push_table(&mut body, &ctx, slice, prefix);
         }
@@ -148,7 +148,7 @@ impl<'a> Renderer<'a> {
             let tasks = by_status.get(status.slug.as_str()).unwrap_or(&empty);
             // The space board is a live-work cockpit: backlog collapses too.
             if status.is_hidden || status.slug == "backlog" {
-                push_hidden(&mut out, status, tasks.len(), "-S", slug);
+                push_hidden(&mut out, &ctx, status, tasks.len(), "-S", slug);
                 continue;
             }
             let mut merged: Vec<&Task> = tasks.clone();
@@ -159,7 +159,7 @@ impl<'a> Renderer<'a> {
                     .then_with(|| a.order.cmp(&b.order))
             });
             let shown = truncate(&merged, self.top_n);
-            push_heading(&mut out, status, shown.len(), tasks.len());
+            push_heading(&mut out, &ctx, status, shown.len(), tasks.len());
             push_space_table(&mut out, &ctx, shown, &member_prefix, !status.is_closed);
         }
         let out_path = out_dir.join(INDEX_FILE);
@@ -222,18 +222,25 @@ fn truncate<'t>(tasks: &'t [&'t Task], top_n: i64) -> &'t [&'t Task] {
     if top_n < 0 { tasks } else { &tasks[..(top_n as usize).min(tasks.len())] }
 }
 
-fn push_heading(out: &mut String, status: &Status, shown: usize, total: usize) {
+/// `## <icon> Name` — the status icon leads the heading when the status has one.
+fn heading_name(ctx: &TableCtx, status: &Status) -> String {
+    let icon = ctx.status_icon(&status.slug);
+    if icon.is_empty() { status.name.clone() } else { format!("{icon} {}", status.name) }
+}
+
+fn push_heading(out: &mut String, ctx: &TableCtx, status: &Status, shown: usize, total: usize) {
+    let name = heading_name(ctx, status);
     if total > shown {
-        out.push_str(&format!("## {} (top {shown} of {total})\n\n", status.name));
+        out.push_str(&format!("## {name} (top {shown} of {total})\n\n"));
     } else {
-        out.push_str(&format!("## {} ({total})\n\n", status.name));
+        out.push_str(&format!("## {name} ({total})\n\n"));
     }
     push_description(out, status);
 }
 
 /// Collapsed section: heading, count, and the list command instead of a table.
-fn push_hidden(out: &mut String, status: &Status, total: usize, flag: &str, owner: &str) {
-    out.push_str(&format!("## {} ({total})\n\n", status.name));
+fn push_hidden(out: &mut String, ctx: &TableCtx, status: &Status, total: usize, flag: &str, owner: &str) {
+    out.push_str(&format!("## {} ({total})\n\n", heading_name(ctx, status)));
     push_description(out, status);
     out.push_str(&format!("_`kdb tasks list {flag} {owner} -s {}`_\n\n", status.slug));
 }
