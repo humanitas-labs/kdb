@@ -18,7 +18,7 @@ Concrete pain in digimata root:
 - `.tasks/` folders accumulate `T-NNNN.md` files forever (hermaeus has 40+). No natural pruning.
 - IDs are hand-incremented. Collisions and drift between the per-task files and `TODO.md`.
 - No structured querying — can't ask "all P1 active tasks in C-14" without grep gymnastics.
-- Cycle metadata (key, dates, schwerpunkt, status) is implicit in folder names under `.cycle/`.
+- Cycle metadata (key, dates, top priority, status) is implicit in folder names under `.plan/cycle/`.
 
 kdb's stated vision (`.internal/vision.md`) is "relational data and unstructured data that live in the same queryable layer". The relational tables are the missing half.
 
@@ -46,10 +46,10 @@ CREATE TABLE cycles (
   key         TEXT    NOT NULL UNIQUE,   -- "C-14" or "2026-C-14" — user's choice
   start_date  TEXT    NOT NULL,           -- Monday
   end_date    TEXT    NOT NULL,           -- following Sunday
-  description TEXT,                       -- schwerpunkt / main effort
+  description TEXT,                       -- top priority / main effort
   status      TEXT    NOT NULL DEFAULT 'planned'
               CHECK (status IN ('planned','active','done','abandoned')),
-  path        TEXT,                       -- rel path to cycle artifacts (e.g. .cycle/C-14/)
+  path        TEXT,                       -- rel path to cycle artifacts (e.g. .plan/cycle/C-14/)
   created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
@@ -146,9 +146,9 @@ Given the DB is source of truth, everything on disk for tasks/cycles is regenera
 - `TODO.md` — rendered digest. Sections grouped by cycle (current cycle first, then other active cycles, then uncycled, then parked). Within each cycle: Stack (`in_progress`) then Heap (`open`). Each line: `- [ ] {slug}-{seq} — {title}` with priority marker if P1/P2.
 - `T-{slug}-{seq}.md` — one file per task in the top-N (by `updated_at DESC` among active). Frontmatter + body.
 
-**Per cycle** (`.cycle/<key>/`) — thin pointer, not full ownership:
+**Per cycle** (`.plan/cycle/<key>/`) — thin pointer, not full ownership:
 
-- Do *not* generate `.cycle/` files yet. `cycles.path` points at the existing artifact folder (e.g. `.cycle/C-14/`). Ownership of `.cycle/` contents is out of scope for v0.1.
+- Do *not* generate `.plan/cycle/` files yet. `cycles.path` points at the existing artifact folder (e.g. `.plan/cycle/C-14/`). Ownership of `.plan/cycle/` contents is out of scope for v0.1.
 
 **GC**: `kdb render` deletes any `T-*.md` in a project's `.tasks/` that isn't in the top-N result. Never touches DB.
 
@@ -174,7 +174,7 @@ Given the DB is source of truth, everything on disk for tasks/cycles is regenera
 5. If `--delete-sources`, unlink the parsed `.md` files.
 6. Auto-run `kdb render` at the end.
 
-A separate `kdb cycles import` parses `.cycle/<key>/` folder names to seed the cycles table (setting `path` to the folder). Out of scope for first pass — can be done via `kdb cycles add` per cycle initially.
+A separate `kdb cycles import` parses `.plan/cycle/<key>/` folder names to seed the cycles table (setting `path` to the folder). Out of scope for first pass — can be done via `kdb cycles add` per cycle initially.
 
 ### 6. Gitignore
 

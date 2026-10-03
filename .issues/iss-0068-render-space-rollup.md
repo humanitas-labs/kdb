@@ -25,11 +25,11 @@ working unit has no single materialized board — only the per-query view
 This bites hardest when a space and one of its member projects **share a path**.
 Concrete case: the `iceberg` space (`path: iceberg`) contains three projects —
 `iceberg`/ICE (path `iceberg`, same as the space), `adrata`/ADR
-(`iceberg/clients/adrata`), `quartile`/SFD (`iceberg/clients/quartile`).
-`kdb render -P iceberg` writes `iceberg/.tasks/index.md` with **only ICE tasks**,
+(`studio/clients/adrata`), `quartile`/SFD (`studio/clients/quartile`).
+`kdb render -P iceberg` writes `studio/.tasks/index.md` with **only ICE tasks**,
 even though that file sits at the space root. Adrata (13 open) and Quartile
 (2 in-progress + 2 cycle + 5 backlog) are invisible at the level where the day is
-actually planned — `iceberg/.plan/week.md` schedules Site/Outreach/**Adrata**/
+actually planned — `studio/.plan/week.md` schedules Site/Outreach/**Adrata**/
 **Quartile** streams that map one-to-one onto the three projects.
 
 ## Proposal

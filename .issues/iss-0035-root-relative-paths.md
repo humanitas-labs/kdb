@@ -24,10 +24,10 @@ Support absolute paths that resolve from the kdb project root, so links from dee
 
 ```markdown
 <!-- currently: fragile relative path from .self/signals/events/ -->
-[C-09 plan](../../../.cycle/C-09/plan.md)
+[C-09 plan](../../../.plan/cycle/C-09/plan.md)
 
 <!-- proposed: root-relative -->
-[C-09 plan](/.cycle/C-09/plan.md)
+[C-09 plan](/.plan/cycle/C-09/plan.md)
 ```
 
 ## Behavior

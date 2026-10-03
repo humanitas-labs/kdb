@@ -615,7 +615,7 @@ mod tests {
                 slug: "adrata",
                 alias: "ADR",
                 name: Some("Adrata"),
-                path: "iceberg/clients/adrata",
+                path: "labs/clients/adrata",
                 description: None,
                 space_id: Some(space.id),
             },
@@ -658,7 +658,7 @@ mod tests {
         .unwrap();
 
         let out = materialize_space(&conn, tmp.path(), "iceberg").unwrap();
-        assert!(out.ends_with("iceberg/.tasks/index.md"));
+        assert!(out.ends_with("labs/.tasks/index.md"));
         let body = std::fs::read_to_string(&out).unwrap();
         assert!(body.contains("# Iceberg Labs — Tasks"));
         // Status-major: one merged In Progress table across both owners, no
@@ -678,10 +678,10 @@ mod tests {
         assert!(body.contains("_`kdb tasks list -S iceberg -s backlog`_"));
 
         // Both task files actually exist where the links point.
-        assert!(tmp.path().join("iceberg/.tasks/T-0001.md").exists());
+        assert!(tmp.path().join("labs/.tasks/T-0001.md").exists());
         assert!(
             tmp.path()
-                .join("iceberg/clients/adrata/.tasks/T-0001.md")
+                .join("labs/clients/adrata/.tasks/T-0001.md")
                 .exists()
         );
     }

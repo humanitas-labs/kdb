@@ -33,7 +33,7 @@ each module's index table + `SOP/_INDEX.md`.
 1. **ID form:** pure sequential `SOP-001 … SOP-030`, zero-padded 3 digits, `SOP-`
    prefix retained as the type tag.
 2. **Local tiers namespaced:** global kernel procedures draw from `SOP-0NN`; a
-   space/project-tier procedure (e.g. Quartile's `iceberg/clients/quartile/shared/kernel/SOP/`)
+   space/project-tier procedure (e.g. Quartile's `studio/clients/quartile/shared/kernel/SOP/`)
    uses an **uppercase alias** prefix — `SOP-QTP-0NN` — matching the kdb project-alias
    convention (`kdb projects … --alias`). The checker resolves by path regardless; the
    prefix is for human uniqueness.
@@ -162,7 +162,7 @@ the symbol table) + the tree-walk that already visits `fenced_code_block` nodes
    (`#sop-o04-…` → `#sop-029-…`), and index tables.
 2. Scope: 25 digimata `.md` files + `~/.claude/CLAUDE.md` + `~/.claude/plans/distributed-snacking-newt.md`,
    plus doctrine, intel templates, and the Quartile tier
-   (`iceberg/clients/quartile/shared/kernel/SOP/` — namespaced `SOP-QTP-0NN`).
+   (`studio/clients/quartile/shared/kernel/SOP/` — namespaced `SOP-QTP-0NN`).
 3. Update task bodies that cite IDs (KDB-0008/0009) and spec §8.
 4. Order longest-ID-first when substituting to avoid partial-token collisions
    (`SOP-O01` before `SOP-O` fragments; not an issue with anchored regex, but the
@@ -185,7 +185,7 @@ the symbol table) + the tree-walk that already visits `fenced_code_block` nodes
 │ kernel/SOP/*.md (30 procs, 25 files)        │ Edit (rename — workstream C)     │
 │ kernel/prosaic.md §8                         │ Edit (conformance status)        │
 │ ~/.claude/CLAUDE.md, plans/*.md             │ Edit (rename refs)               │
-│ iceberg/clients/quartile/.../SOP/*          │ Edit (namespaced rename)         │
+│ studio/clients/quartile/.../SOP/*          │ Edit (namespaced rename)         │
 └─────────────────────────────────────────────┴──────────────────────────────────┘
 ```
 

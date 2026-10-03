@@ -1,6 +1,6 @@
 //! Parse `CODEMAP.md` YAML frontmatter into a [`CodemapDoc`].
 //!
-//! The frontmatter contract (defined by `~/.claude/templates/codemap.md`):
+//! The frontmatter contract (defined by `~/Documents/humanitas/kernel/templates/code/codemap.md`):
 //!
 //! ```yaml
 //! domain: …   repo: …   root: …   owner: …
@@ -24,16 +24,16 @@ use super::{CodemapDoc, ParseProblem};
 //
 // struct RawFrontmatter                       L42
 // pub fn parse()                              L55
-// fn split_frontmatter()                      L94
-// fn clean_opt()                             L107
-// fn normalize_root()                        L115
-// mod tests                                  L122
-// fn parses_full_frontmatter()               L126
-// fn confidence_is_ignored_not_an_error()    L138
-// fn root_defaults_to_map_directory()        L145
-// fn missing_domain_is_a_problem()           L152
-// fn missing_frontmatter_is_a_problem()      L159
-// fn malformed_yaml_is_a_problem()           L166
+// fn split_frontmatter()                      L98
+// fn clean_opt()                             L113
+// fn normalize_root()                        L123
+// mod tests                                  L130
+// fn parses_full_frontmatter()               L134
+// fn confidence_is_ignored_not_an_error()    L146
+// fn root_defaults_to_map_directory()        L153
+// fn missing_domain_is_a_problem()           L160
+// fn missing_frontmatter_is_a_problem()      L167
+// fn malformed_yaml_is_a_problem()           L174
 // -----------------------------------------------
 
 /// Raw frontmatter shape as authored. All fields optional so a missing
@@ -70,7 +70,11 @@ pub fn parse(file_rel: &Path, content: &str) -> Result<CodemapDoc, ParseProblem>
         .filter(|s| !s.is_empty())
         .ok_or_else(|| problem("frontmatter missing required `domain`"))?;
 
-    let root = match raw.root.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()) {
+    let root = match raw
+        .root
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+    {
         Some(authored) => normalize_root(&authored),
         // Colocated default: the directory holding the map file.
         None => file_rel.parent().map(Path::to_path_buf).unwrap_or_default(),
@@ -92,7 +96,9 @@ pub fn parse(file_rel: &Path, content: &str) -> Result<CodemapDoc, ParseProblem>
 /// Returns the content between the leading `---` fence and its closing `---`,
 /// or `None` if the document does not open with a frontmatter fence.
 fn split_frontmatter(content: &str) -> Option<&str> {
-    let rest = content.strip_prefix("---\n").or_else(|| content.strip_prefix("---\r\n"))?;
+    let rest = content
+        .strip_prefix("---\n")
+        .or_else(|| content.strip_prefix("---\r\n"))?;
     // Find the closing fence at the start of a line.
     for marker in ["\n---\n", "\n---\r\n", "\r\n---\r\n"] {
         if let Some(end) = rest.find(marker) {
@@ -105,7 +111,9 @@ fn split_frontmatter(content: &str) -> Option<&str> {
 
 /// Trim whitespace and drop empty strings from an optional field.
 fn clean_opt(value: Option<String>) -> Option<String> {
-    value.map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+    value
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
 }
 
 /// Normalize an authored, repo-relative `root` value.

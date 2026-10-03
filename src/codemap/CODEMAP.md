@@ -134,4 +134,4 @@ The `check` path (the richest; `ls`/`render` are subsets):
 
 - [ ] `split_frontmatter` (`frontmatter.rs:77`) handles `\n`, `\r\n`, and EOF-only frontmatter; very unusual mixed line endings are untested beyond the listed markers.
 - [ ] `commit_distance` uses `git rev-list --count <commit>..HEAD` over the whole repo, not scoped to the subtree (`git.rs:80`) — so the "N commits behind" count is repo-wide, while `changed` is subtree-scoped. Possibly intentional, but worth noting as a mild inconsistency.
-- [ ] The frontmatter contract is documented as living in `~/.claude/templates/codemap.md` (`frontmatter.rs:3`), a path outside this repo — the two can drift independently.
+- [ ] The frontmatter contract is documented as living in `~/Documents/humanitas/kernel/templates/code/codemap.md` (`frontmatter.rs:3`), a path outside this repo — the two can drift independently.

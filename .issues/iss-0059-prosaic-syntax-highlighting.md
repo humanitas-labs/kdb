@@ -22,7 +22,7 @@ Prosaic is a pseudocode language used for writing SOPs and operational procedure
 | Control flow | `for each`, `if`, `in`, `break` | purple |
 | Action verb | `copy`, `write`, `create`, `mark`, `check`, `print`, `list`, `update`, `sort`, `tag`, `assign`, `prune`, `classify`, `pick`, `take`, `allocate`, `link`, `group`, `inventory`, `note`, `review` | blue |
 | Block label | `scan:`, `evaluate:`, `budget:`, `output:` | orange |
-| File path | `.tasks/TODO.md`, `.cycle/{id}/plan.md` | green |
+| File path | `.tasks/TODO.md`, `.plan/cycle/{id}/plan.md` | green |
 | Template var | `{cycle_id}`, `{YYYY.MM.DD}` | cyan |
 | Operator | `→`, `=`, `×` | red |
 | Annotation | `(facts, not feelings)` | gray italic |

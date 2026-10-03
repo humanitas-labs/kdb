@@ -28,9 +28,9 @@ alias and own no tasks — they're "organizational only."
 
 That forces ceremony wherever a space is itself the working unit. Concrete case:
 the `iceberg` space's *own* work (the Site and Outreach streams in
-`iceberg/.plan/week.md`) has no home unless we invent a phantom `iceberg`/ICE
+`studio/.plan/week.md`) has no home unless we invent a phantom `iceberg`/ICE
 project that exists only to hold tasks the space conceptually owns. That phantom
-project then collides with the space over the shared `iceberg/` path — the entire
+project then collides with the space over the shared `studio/` path — the entire
 premise of the now-superseded iss-0068.
 
 The clean model: a space is a real working unit that can own tasks directly. A
