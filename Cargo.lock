@@ -650,6 +650,7 @@ dependencies = [
  "clap",
  "globset",
  "ignore",
+ "regex",
  "rusqlite",
  "serde",
  "serde_json",
