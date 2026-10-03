@@ -1,0 +1,18 @@
+id = "kdb"
+name = "kdb"
+version = "0.0.1"
+schema_version = 1
+authors = ["Humanitas Labs"]
+description = "Wire the kdb language server into Markdown in Zed"
+repository = "https://github.com/humanitas-labs/kdb"
+
+[lib]
+kind = "Rust"
+version = "0.7.0"
+
+[language_servers.kdb]
+name = "kdb"
+languages = ["Markdown"]
+
+[language_servers.kdb.language_ids]
+Markdown = "markdown"
