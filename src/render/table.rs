@@ -23,16 +23,21 @@ impl<'a> TableCtx<'a> {
         Self { icon_prefix: icon_prefix(owner_path), icons, blockers }
     }
 
-    /// `![](<prefix><icon>.svg)` for a status slug, or empty when the status has no icon.
-    pub fn status_icon(&self, slug: &str) -> String {
+    /// `![](<prefix><icon><ext>)` for a status slug, or empty when the status has no icon.
+    fn icon(&self, slug: &str, ext: &str) -> String {
         match self.icons.get(slug) {
-            Some(icon) => format!("![]({}{icon}.svg)", self.icon_prefix),
+            Some(icon) => format!("![]({}{icon}{ext})", self.icon_prefix),
             None => String::new(),
         }
     }
 
+    /// The heading-sized variant, padded for the taller line box.
+    pub fn heading_icon(&self, slug: &str) -> String {
+        self.icon(slug, ".h.svg")
+    }
+
     fn icon_cell(&self, task: &Task) -> String {
-        self.status_icon(&task.status)
+        self.icon(&task.status, ".svg")
     }
 
     fn blocked_cell(&self, task: &Task) -> String {

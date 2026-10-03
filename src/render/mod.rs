@@ -35,18 +35,55 @@ const ICONS: &[(&str, &[u8])] = &[
     ("done", include_bytes!("../../docs/assets/done.svg")),
 ];
 
-/// Ensure `.kdb/icons/` holds the embedded SVGs; write only on a difference.
+/// Transparent space added above each glyph, in px. Markdown viewers that
+/// top-align inline images (Zed) leave a bare icon sitting high against the
+/// text; padding the SVG pushes the glyph down. Headings get more because
+/// their line box is taller.
+const ROW_PAD: f64 = 1.5;
+const HEADING_PAD: f64 = 3.5;
+
+/// Ensure `.kdb/icons/` holds each icon twice: `<name>.svg` for table rows and
+/// `<name>.h.svg` for section headings. Writes only on a difference.
 pub fn ensure_icons(root: &Path) -> Result<()> {
     let dir = root.join(ICONS_DIR);
     fs::create_dir_all(&dir).with_context(|| format!("failed to create {}", dir.display()))?;
     for (name, bytes) in ICONS {
-        let path = dir.join(format!("{name}.svg"));
-        if fs::read(&path).map(|cur| cur == *bytes).unwrap_or(false) {
-            continue;
+        let svg = std::str::from_utf8(bytes).expect("icon SVGs are UTF-8");
+        for (file, pad) in [(format!("{name}.svg"), ROW_PAD), (format!("{name}.h.svg"), HEADING_PAD)] {
+            let content = pad_top(svg, pad);
+            let path = dir.join(file);
+            if fs::read_to_string(&path).map(|cur| cur == content).unwrap_or(false) {
+                continue;
+            }
+            fs::write(&path, content).with_context(|| format!("failed to write {}", path.display()))?;
         }
-        fs::write(&path, bytes).with_context(|| format!("failed to write {}", path.display()))?;
     }
     Ok(())
+}
+
+/// Grow the root `<svg>` upward by `pad`: raise its `height` and extend the
+/// `viewBox` above the origin, so the drawing keeps its size and moves down.
+fn pad_top(svg: &str, pad: f64) -> String {
+    let attr = |name: &str| -> Option<(usize, usize)> {
+        let key = format!(" {name}=\"");
+        let start = svg.find(&key)? + key.len();
+        let end = start + svg[start..].find('"')?;
+        Some((start, end))
+    };
+    let (Some((hs, he)), Some((vs, ve))) = (attr("height"), attr("viewBox")) else {
+        return svg.to_string();
+    };
+    let Ok(height) = svg[hs..he].parse::<f64>() else { return svg.to_string() };
+    let vb: Vec<f64> = svg[vs..ve].split_whitespace().filter_map(|n| n.parse().ok()).collect();
+    let [x, y, w, h] = vb[..] else { return svg.to_string() };
+    let mut out = svg.to_string();
+    // Replace the later attribute first so the earlier offsets stay valid.
+    let mut edits = [(hs, he, format!("{}", height + pad)), (vs, ve, format!("{x} {} {w} {}", y - pad, h + pad))];
+    edits.sort_by_key(|e| std::cmp::Reverse(e.0));
+    for (s, e, v) in edits {
+        out.replace_range(s..e, &v);
+    }
+    out
 }
 
 /// Shared per-render state.
@@ -224,7 +261,7 @@ fn truncate<'t>(tasks: &'t [&'t Task], top_n: i64) -> &'t [&'t Task] {
 
 /// `## <icon> Name` — the status icon leads the heading when the status has one.
 fn heading_name(ctx: &TableCtx, status: &Status) -> String {
-    let icon = ctx.status_icon(&status.slug);
+    let icon = ctx.heading_icon(&status.slug);
     if icon.is_empty() { status.name.clone() } else { format!("{icon} {}", status.name) }
 }
 
